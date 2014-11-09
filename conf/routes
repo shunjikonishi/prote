@@ -1,0 +1,13 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Home page
+GET     /                                controllers.Application.proxy(path = "/")
+GET     /*path                           controllers.Application.proxy(path)
+POST    /*path                           controllers.Application.proxy(path)
+PUT     /*path                           controllers.Application.proxy(path)
+DELETE  /*path                           controllers.Application.proxy(path)
+OPTIONS /*path                           controllers.Application.proxy(path)
+HEAD    /*path                           controllers.Application.proxy(path)
+
