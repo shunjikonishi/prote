@@ -46,6 +46,8 @@ object Application extends Controller {
     val headers = request.headers.toMap.flatMap { case (k, v) =>
       if (k.equalsIgnoreCase("Host")) {
         Seq((k, TARGET_HOST))
+      } else if (k.equalsIgnoreCase("Origin") || k.equalsIgnoreCase("Referer")) {
+        Seq((k, v.head.replace(request.host, TARGET_HOST)))
       } else {
         v.map( v => (k, v))
       }
