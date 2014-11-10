@@ -36,8 +36,10 @@ object Application extends Controller {
       val sm = StorageManager
       val baseFile = sm.newBaseFile
       val requestMessage = sm.createRequestMessage(request, baseFile)
-      println(requestMessage)
-      println()
+      if (Logger.isDebugEnabled) {
+        Logger.debug(requestMessage.toString)
+        Logger.debug("")
+      }
 
       val ret = Promise[Result]()
       val url = protocol + "://" + targetHost + request.uri
@@ -73,15 +75,19 @@ object Application extends Controller {
       proxyReq.execute(new AsyncCompletionHandler[Response](){
         override def onCompleted(response: Response): Response = {
           val responseMessage = sm.createResponseMessage(request.version, response, baseFile)
-          println(responseMessage)
-          println()
-          val result = Result(
-            ResponseHeader(
-              response.getStatusCode,
-              responseMessage.headersToMap
-            ),
-            responseMessage.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
-          ).withCookies(Cookie(AppConfig.cookieName, sessionId))
+          if (Logger.isDebugEnabled) {
+            Logger.debug(responseMessage.toString)
+            Logger.debug("")
+          }
+          val body = responseMessage.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
+          val result = (if (responseMessage.isChunked) {
+            Status(response.getStatusCode)
+              .chunked(body)
+              .withHeaders(responseMessage.headersToMap.toSeq:_*)
+          } else {
+            val header = ResponseHeader(response.getStatusCode, responseMessage.headersToMap)
+            Result(header, body)
+          }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
           response
         }

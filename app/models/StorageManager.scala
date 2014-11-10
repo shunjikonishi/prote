@@ -36,11 +36,13 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     } else {
       None
     }
-    RequestMessage(requestLine, headers, body)
+    val ret = RequestMessage(requestLine, headers, body)
+    ret.saveHeaders(baseFile)
+    ret
   }
 
   def createResponseMessage(httpVersion: String, response: Response, baseFile: File): ResponseMessage = {
-    val statusLine = StatusLine(response.getStatusCode, httpVersion, response.getStatusText)
+    val statusLine = StatusLine(response.getStatusCode, httpVersion, Option(response.getStatusText))
     val headers = mapAsScalaMapConverter(response.getHeaders).asScala.map { case (k, v) =>
       HttpHeader(k, v.get(0))
     }.toSeq
@@ -66,7 +68,9 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     } else {
       None
     }
-    ResponseMessage(statusLine, headers, body)
+    val ret = ResponseMessage(statusLine, headers, body)
+    ret.saveHeaders(baseFile)
+    ret
   }
 }
 
