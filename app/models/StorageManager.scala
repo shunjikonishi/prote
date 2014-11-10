@@ -14,6 +14,11 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
 
   def newBaseFile = new File(dir, UUID.randomUUID.toString)
 
+  def getRequestMessage(id: String) = {
+    val baseFile = new File(dir, id)
+    baseFile
+  }
+  
   def createRequestMessage(request: Request[RawBuffer], baseFile: File): RequestMessage = {
     val requestLine = RequestLine(request.method, request.version, request.uri)
     val headers = request.headers.toMap.flatMap { case (k, v) =>

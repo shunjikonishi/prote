@@ -18,6 +18,7 @@ import java.io.OutputStream
 import java.util.UUID
 import models.AppConfig
 import models.StorageManager
+import models.WebSocketManager
 
 object Application extends Controller {
 
@@ -106,4 +107,9 @@ object Application extends Controller {
     Ok(views.html.main(sessionId)).withCookies(Cookie(AppConfig.cookieName, sessionId))
   }
 
+  def ws = WebSocket.using[String] { implicit request =>
+    val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(throw new IllegalStateException())
+    val h = WebSocketManager.getInvoker(sessionId)
+    (h.in, h.out)
+  }
 }

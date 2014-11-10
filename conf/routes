@@ -4,5 +4,6 @@
 
 # Console
 GET     /CONSOLE/main                    controllers.Application.main
+GET     /CONSOLE/ws                      controllers.Application.ws
 GET     /CONSOLE/assets/*file            controllers.Assets.at(path="/public", file)
 
