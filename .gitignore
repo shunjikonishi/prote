@@ -1,4 +1,7 @@
 logs
+proxy_logs
+node_modules
+bower_components
 project/project
 project/target
 target

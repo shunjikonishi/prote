@@ -1,12 +1,26 @@
-@(title: String)(content: Html)
-
+@(sessionId: String)
 <!DOCTYPE html>
-
-<html>
-    <head>
-        <title>@title</title>
-    </head>
-    <body>
-        @content
-    </body>
+<html ng-app="App">
+<head>
+  <title>PROTE</title>
+  <link rel="stylesheet" href="assets/stylesheets/main.css" />
+  <script src="assets/javascripts/ext/angular.min.js"></script>
+  <script src="assets/javascripts/ext/splitter.js"></script>
+  <script src="assets/javascripts/app.js"></script>
+</head>
+<body ng-init="sessionId='@sessionId'">
+  <div ng-controller="MainController">
+    <bg-splitter orientation="vertical">
+      <bg-pane min-size="100">
+        <h1>PROTE</h1>
+      </bg-pane>
+      <bg-pane min-size="150">
+        <bg-splitter orientation="horizontal">
+          <bg-pane min-size="50">Pane 2</bg-pane>
+          <bg-pane min-size="50">Pane 3</bg-pane>
+        </bg-splitter>
+      </bg-pane>
+    </bg-splitter>
+  </div>
+</body>
 </html>
