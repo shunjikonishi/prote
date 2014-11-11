@@ -16,9 +16,18 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
     }
     addHandler("response") { command =>
       val id = (command.data \ "id").as[String]
-      val msg = StorageManager.getRequestMessage(id)
+      val msg = StorageManager.getResponseMessage(id)
       CommandResponse.None
     }
+  }
+
+  def process(request: RequestMessage, response: ResponseMessage, time: Long) = {
+    val command = new CommandResponse("process", JsObject(Seq(
+      "request" -> JsString(request.requestLine.toString),
+      "status" -> JsNumber(response.statusLine.code),
+      "time" -> JsNumber(time)
+    )))
+    send(command)
   }
 
   init

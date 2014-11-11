@@ -1,5 +1,6 @@
 package models
 
+import play.api.mvc.Cookies
 import play.api.libs.json._
 import java.io.File
 import jp.co.flect.io.FileUtils
@@ -28,10 +29,16 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
     "Content-Type".equalsIgnoreCase(h.name)
   }.map(_.value.takeWhile(_ != ';')).getOrElse("application/octet-stream")
 
-  def headersToMap: Map[String, String] = {
-    headers.map { h =>
+  lazy val headersToMap: Map[String, String] = {
+    val (cookies, others) = headers.partition(_.name.toLowerCase == "set-cookie")
+    val map = others.map { h =>
       (h.name, h.value)
     }.toMap
+    if (cookies.size > 0) {
+      map + ("Set-Cookie" -> Cookies.encode(cookies.flatMap(h => Cookies.decode(h.value))))
+    } else {
+      map
+    }
   }
 
   def toJson = {

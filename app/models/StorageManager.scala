@@ -1,6 +1,7 @@
 package models
 
 import play.api.mvc.Request
+import play.api.mvc.RequestHeader
 import play.api.mvc.RawBuffer
 
 import java.util.UUID
@@ -8,6 +9,7 @@ import java.io.File
 import java.io.FileOutputStream
 import jp.co.flect.io.FileUtils
 import com.ning.http.client.Response
+import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 class StorageManager(val dir: File, targetHost: String, cookieName: String) {
@@ -18,7 +20,11 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     val baseFile = new File(dir, id)
     baseFile
   }
-  
+
+  def getResponseMessage(id: String) = {
+
+  }
+
   def createRequestMessage(request: Request[RawBuffer], baseFile: File): RequestMessage = {
     val requestLine = RequestLine(request.method, request.version, request.uri)
     val headers = request.headers.toMap.flatMap { case (k, v) =>
@@ -46,10 +52,10 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     ret
   }
 
-  def createResponseMessage(httpVersion: String, response: Response, baseFile: File): ResponseMessage = {
-    val statusLine = StatusLine(response.getStatusCode, httpVersion, Option(response.getStatusText))
-    val headers = mapAsScalaMapConverter(response.getHeaders).asScala.map { case (k, v) =>
-      HttpHeader(k, v.get(0))
+  def createResponseMessage(request: RequestHeader, response: Response, baseFile: File): ResponseMessage = {
+    val statusLine = StatusLine(response.getStatusCode, request.version, Option(response.getStatusText))
+    val headers = mapAsScalaMapConverter(response.getHeaders).asScala.flatMap { case (k, v) =>
+      v.map(HttpHeader(k, _))
     }.toSeq
     val body = if (response.hasResponseBody) {
       val bodyFile = new File(baseFile.getParentFile, baseFile.getName + ".response.body")

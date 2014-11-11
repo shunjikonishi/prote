@@ -1,18 +1,40 @@
-@(sessionId: String)
+@(sessionId: String, contextPath: String)
 <!DOCTYPE html>
 <html ng-app="App">
 <head>
   <title>PROTE</title>
   <link rel="stylesheet" href="assets/stylesheets/main.css" />
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
   <script src="assets/javascripts/ext/angular.min.js"></script>
   <script src="assets/javascripts/ext/splitter.js"></script>
+  <script src="assets/javascripts/ext/roomframework.js"></script>
   <script src="assets/javascripts/app.js"></script>
 </head>
-<body ng-init="sessionId='@sessionId'">
+<body ng-init="sessionId='@sessionId'; contextPath='@contextPath'">
   <div ng-controller="MainController">
     <bg-splitter orientation="vertical">
       <bg-pane min-size="100">
-        <h1>PROTE</h1>
+        <div class="ctrl">
+          <h1 class="logo">PROTE</h1>
+        </div>
+        <div class="main">
+          <table>
+            <thead>
+              <tr>
+                <th class="request">Request</th>
+                <th class="status">Status</th>
+                <th class="time">Time(ms)</th>
+              </tr>
+            </thead>
+              <tr ng-repeat="request in list">
+                <td class="request">{{request.request}}</td>
+                <td class="status">{{request.status}}</td>
+                <td class="time">{{request.time}}</td>
+              </tr>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
       </bg-pane>
       <bg-pane min-size="150">
         <bg-splitter orientation="horizontal">

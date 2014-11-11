@@ -32,6 +32,16 @@ object Application extends Controller {
         }
       }
     }
+    def escape(str: String) = {
+      str.foldLeft(new StringBuilder()) { (buf, c) =>
+        c match {
+          case '|' => buf.append("%7C")
+          case _ => buf.append(c)
+        }
+        buf
+      }.toString
+    }
+    val start = System.currentTimeMillis
     AppConfig.targetHost.map { targetHost =>
       val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
       val sm = StorageManager
@@ -39,11 +49,10 @@ object Application extends Controller {
       val requestMessage = sm.createRequestMessage(request, baseFile)
       if (Logger.isDebugEnabled) {
         Logger.debug(requestMessage.toString)
-        Logger.debug("")
       }
 
       val ret = Promise[Result]()
-      val url = protocol + "://" + targetHost + request.uri
+      val url = protocol + "://" + targetHost + escape(request.uri)
       val client = new AsyncHttpClient()
       val proxyReq = requestMessage.headers.foldLeft(request.method match {
         case "GET" =>client.prepareGet(url)
@@ -75,10 +84,9 @@ object Application extends Controller {
 
       proxyReq.execute(new AsyncCompletionHandler[Response](){
         override def onCompleted(response: Response): Response = {
-          val responseMessage = sm.createResponseMessage(request.version, response, baseFile)
+          val responseMessage = sm.createResponseMessage(request, response, baseFile)
           if (Logger.isDebugEnabled) {
             Logger.debug(responseMessage.toString)
-            Logger.debug("")
           }
           val body = responseMessage.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
           val result = (if (responseMessage.isChunked) {
@@ -90,6 +98,7 @@ object Application extends Controller {
             Result(header, body)
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
+          WebSocketManager.getInvoker(sessionId).process(requestMessage, responseMessage, System.currentTimeMillis - start)
           response
         }
         override def onThrowable(t: Throwable) = {
@@ -104,7 +113,8 @@ object Application extends Controller {
 
   def main = Action { implicit request =>
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
-    Ok(views.html.main(sessionId)).withCookies(Cookie(AppConfig.cookieName, sessionId))
+    val contextPath = AppConfig.consoleContext
+    Ok(views.html.main(sessionId, contextPath)).withCookies(Cookie(AppConfig.cookieName, sessionId))
   }
 
   def ws = WebSocket.using[String] { implicit request =>
