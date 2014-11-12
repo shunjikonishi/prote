@@ -12,18 +12,20 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
     addHandler("request") { command =>
       val id = (command.data \ "id").as[String]
       val msg = StorageManager.getRequestMessage(id)
-      CommandResponse.None
+      command.text(msg.toString)
     }
     addHandler("response") { command =>
       val id = (command.data \ "id").as[String]
       val msg = StorageManager.getResponseMessage(id)
-      CommandResponse.None
+      command.text(msg.toString)
     }
   }
 
-  def process(request: RequestMessage, response: ResponseMessage, time: Long) = {
+  def process(id: String, request: RequestMessage, response: ResponseMessage, time: Long) = {
     val command = new CommandResponse("process", JsObject(Seq(
-      "request" -> JsString(request.requestLine.toString),
+      "id" -> JsString(id),
+      "method" -> JsString(request.requestLine.method),
+      "uri" -> JsString(request.requestLine.uri),
       "status" -> JsNumber(response.statusLine.code),
       "time" -> JsNumber(time)
     )))

@@ -3,10 +3,13 @@ package models
 import play.api.mvc.Request
 import play.api.mvc.RequestHeader
 import play.api.mvc.RawBuffer
+import play.api.libs.json._
 
 import java.util.UUID
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 import jp.co.flect.io.FileUtils
 import com.ning.http.client.Response
 import scala.collection.JavaConversions._
@@ -16,13 +19,41 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
 
   def newBaseFile = new File(dir, UUID.randomUUID.toString)
 
+  private def readJson(file: File): JsValue = {
+    Json.parse(FileUtils.readFile(file))
+  }
+
+  private def parseHeaders(json: JsValue): Seq[HttpHeader] = {
+    json \ "headers" match {
+      case JsArray(seq) => seq.map { h =>
+        val name = (h \ "name").as[String]
+        val value = (h \ "value").as[String]
+        HttpHeader(name, value)
+      }
+      case _ => throw new IllegalStateException()
+    }
+  }
+
   def getRequestMessage(id: String) = {
     val baseFile = new File(dir, id)
-    baseFile
+    val headerFile = new File(baseFile.getParentFile, baseFile.getName +  ".request.headers")
+    val bodyFile = new File(baseFile.getParentFile, baseFile.getName +  ".request.body")
+    val json = readJson(headerFile)
+
+    val requestLine = (json \ "requestLine").as[String]
+    val headers = parseHeaders(json)
+    RequestMessage(requestLine, headers, bodyFile)
   }
 
   def getResponseMessage(id: String) = {
+    val baseFile = new File(dir, id)
+    val headerFile = new File(baseFile.getParentFile, baseFile.getName +  ".response.headers")
+    val bodyFile = new File(baseFile.getParentFile, baseFile.getName +  ".response.body")
+    val json = readJson(headerFile)
 
+    val statusLine = (json \ "statusLine").as[String]
+    val headers = parseHeaders(json)
+    ResponseMessage(statusLine, headers, bodyFile)
   }
 
   def createRequestMessage(request: Request[RawBuffer], baseFile: File): RequestMessage = {

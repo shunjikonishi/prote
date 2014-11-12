@@ -21,6 +21,8 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
         case str if (str.startsWith("text")) => true
         case str if (str.endsWith("xml")) => true
         case str if (str.endsWith("json")) => true
+        case str if (str.endsWith("javascript")) => true
+        case str if (str.endsWith("stylesheet")) => true
         case _ => false
       }
     }
@@ -79,6 +81,15 @@ case class RequestMessage(requestLine: RequestLine, headers: Seq[HttpHeader], bo
   val isRequest = true
 }
 
+object RequestMessage {
+  def apply(requestLine: String, headers: Seq[HttpHeader], body: File): RequestMessage = {
+    RequestMessage(RequestLine(requestLine), headers, body.exists match {
+      case true => Some(body)
+      case false => None
+    })
+  }
+}
+
 case class ResponseMessage(statusLine: StatusLine, headers: Seq[HttpHeader], body: Option[File])
   extends HttpMessage(statusLine.toString, headers, body) 
 {
@@ -87,6 +98,16 @@ case class ResponseMessage(statusLine: StatusLine, headers: Seq[HttpHeader], bod
     headers.find(_.name.equalsIgnoreCase("Transfer-Encoding")).map(_.value.equalsIgnoreCase("chunked")).getOrElse(false)
   }
 }
+
+object ResponseMessage {
+  def apply(statusLine: String, headers: Seq[HttpHeader], body: File): ResponseMessage = {
+    ResponseMessage(StatusLine(statusLine), headers, body.exists match {
+      case true => Some(body)
+      case false => None
+    })
+  }
+}
+
 
 case class RequestLine(method: String, version: String, uri: String) {
 
@@ -113,8 +134,8 @@ case class StatusLine(code: Int, version: String, phrase: Option[String]) {
 object StatusLine {
   def apply(line: String): StatusLine = {
     line.split(" ").toList match {
-      case code :: version :: Nil => StatusLine(code.toInt, version, None)
-      case code :: version :: phrase => StatusLine(code.toInt, version, Some(phrase.mkString(" ")))
+      case version :: code :: Nil => StatusLine(code.toInt, version, None)
+      case version :: code :: phrase => StatusLine(code.toInt, version, Some(phrase.mkString(" ")))
       case _ => throw new IllegalArgumentException(line)
     }
   }
