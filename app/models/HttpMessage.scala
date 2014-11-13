@@ -54,10 +54,9 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
       ))))
     ))
   }
-  def saveHeaders(baseFile: File) = {
+  def saveHeaders(file: File) = {
     val str = Json.prettyPrint(toJson)
-    val middle = if (isRequest) ".request" else ".response"
-    FileUtils.writeFile(new File(baseFile.getParentFile, baseFile.getName + middle + ".headers"), str, "utf-8")
+    FileUtils.writeFile(file, str, "utf-8")
   }
 
   def kind = {

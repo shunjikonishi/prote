@@ -44,8 +44,8 @@ object Application extends Controller {
     AppConfig.targetHost.map { targetHost =>
       val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
       val sm = StorageManager
-      val baseFile = sm.newBaseFile
-      val requestMessage = sm.createRequestMessage(request, baseFile)
+      val requestId = UUID.randomUUID.toString
+      val requestMessage = sm.createRequestMessage(request, requestId)
       if (Logger.isDebugEnabled) {
         Logger.debug(requestMessage.toString)
       }
@@ -84,7 +84,7 @@ object Application extends Controller {
       val start = System.currentTimeMillis
       proxyReq.execute(new AsyncCompletionHandler[Response](){
         override def onCompleted(response: Response): Response = {
-          val responseMessage = sm.createResponseMessage(request, response, baseFile)
+          val responseMessage = sm.createResponseMessage(request, response, requestId)
           val time = System.currentTimeMillis - start
           if (Logger.isDebugEnabled) {
             Logger.debug(responseMessage.toString)
@@ -99,7 +99,7 @@ object Application extends Controller {
             Result(header, body)
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
-          WebSocketManager.getInvoker(sessionId).process(baseFile.getName(), requestMessage, responseMessage, time)
+          WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
           response
         }
         override def onThrowable(t: Throwable) = {

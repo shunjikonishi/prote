@@ -1,10 +1,19 @@
+import play.api.Application
 import play.api.GlobalSettings
 import play.api.mvc.Handler
 import play.api.mvc.RequestHeader
 import models.AppConfig
+import scala.collection.JavaConversions._
+import java.io.File
 
 object Global extends GlobalSettings {
   
+  override def onStart(app: Application) {
+    val dir = new File("proxy_logs")
+    dir.mkdirs
+    dir.listFiles.foreach(_.delete)
+  }
+
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
     val consolePrefix = "/" + AppConfig.consoleContext + "/"
     if (request.path.startsWith(consolePrefix)) {

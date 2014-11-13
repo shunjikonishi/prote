@@ -17,7 +17,11 @@ import scala.collection.JavaConverters._
 
 class StorageManager(val dir: File, targetHost: String, cookieName: String) {
 
-  def newBaseFile = new File(dir, UUID.randomUUID.toString)
+  private def createFile(filename: String) = {
+    val ret = new File(dir, filename)
+    ret.deleteOnExit
+    ret
+  }
 
   private def readJson(file: File): JsValue = {
     Json.parse(FileUtils.readFile(file))
@@ -35,9 +39,8 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
   }
 
   def getRequestMessage(id: String) = {
-    val baseFile = new File(dir, id)
-    val headerFile = new File(baseFile.getParentFile, baseFile.getName +  ".request.headers")
-    val bodyFile = new File(baseFile.getParentFile, baseFile.getName +  ".request.body")
+    val headerFile = createFile(id +  ".request.headers")
+    val bodyFile = createFile(id +  ".request.body")
     val json = readJson(headerFile)
 
     val requestLine = (json \ "requestLine").as[String]
@@ -46,9 +49,8 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
   }
 
   def getResponseMessage(id: String) = {
-    val baseFile = new File(dir, id)
-    val headerFile = new File(baseFile.getParentFile, baseFile.getName +  ".response.headers")
-    val bodyFile = new File(baseFile.getParentFile, baseFile.getName +  ".response.body")
+    val headerFile = createFile(id +  ".response.headers")
+    val bodyFile = createFile(id +  ".response.body")
     val json = readJson(headerFile)
 
     val statusLine = (json \ "statusLine").as[String]
@@ -56,7 +58,7 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     ResponseMessage(statusLine, headers, bodyFile)
   }
 
-  def createRequestMessage(request: Request[RawBuffer], baseFile: File): RequestMessage = {
+  def createRequestMessage(request: Request[RawBuffer], id: String): RequestMessage = {
     val requestLine = RequestLine(request.method, request.version, request.uri)
     val headers = request.headers.toMap.flatMap { case (k, v) =>
       if (k.equalsIgnoreCase("Host")) {
@@ -72,24 +74,24 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     }.toSeq
     val body = if (request.body.size > 0) {
       val src = request.body.asFile
-      val dest = new File(baseFile.getParentFile, baseFile.getName + ".request.body")
+      val dest = createFile(id + ".request.body")
       src.renameTo(dest)
       Some(dest)
     } else {
       None
     }
     val ret = RequestMessage(requestLine, headers, body)
-    ret.saveHeaders(baseFile)
+    ret.saveHeaders(createFile(id + ".request.headers"))
     ret
   }
 
-  def createResponseMessage(request: RequestHeader, response: Response, baseFile: File): ResponseMessage = {
+  def createResponseMessage(request: RequestHeader, response: Response, id: String): ResponseMessage = {
     val statusLine = StatusLine(response.getStatusCode, request.version, Option(response.getStatusText))
     val headers = mapAsScalaMapConverter(response.getHeaders).asScala.flatMap { case (k, v) =>
       v.map(HttpHeader(k, _))
     }.toSeq
     val body = if (response.hasResponseBody) {
-      val bodyFile = new File(baseFile.getParentFile, baseFile.getName + ".response.body")
+      val bodyFile = createFile(id + ".response.body")
       val is = response.getResponseBodyAsStream
       try {
         val os = new FileOutputStream(bodyFile)
@@ -111,7 +113,7 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
       None
     }
     val ret = ResponseMessage(statusLine, headers, body)
-    ret.saveHeaders(baseFile)
+    ret.saveHeaders(createFile(id + ".response.headers"))
     ret
   }
 }
