@@ -27,9 +27,10 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
       }
     }
   }
-  def contentType = headers.find { h =>
-    "Content-Type".equalsIgnoreCase(h.name)
-  }.map(_.value.takeWhile(_ != ';')).getOrElse("application/octet-stream")
+
+  def findHeader(name: String): Option[HttpHeader] = headers.find(h => name.equalsIgnoreCase(h.name))
+
+  def contentType = findHeader("Content-Type").map(_.value.takeWhile(_ != ';')).getOrElse("application/octet-stream")
 
   lazy val headersToMap: Map[String, String] = {
     val (cookies, others) = headers.partition(_.name.toLowerCase == "set-cookie")
@@ -59,14 +60,35 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
     FileUtils.writeFile(new File(baseFile.getParentFile, baseFile.getName + middle + ".headers"), str, "utf-8")
   }
 
-  override def toString = {
+  def kind = {
+    body.map { file =>
+      contentType.toLowerCase match {
+        case str if (str.startsWith("image/")) => MessageKind.Image
+        case str if (str.endsWith("/javascript")) => MessageKind.Script
+        case str if (str.endsWith("/css")) => MessageKind.Script
+        case str if (str.endsWith("json")) => MessageKind.Json
+        case str if (str.endsWith("html")) => MessageKind.HTML
+        case str if (str.endsWith("xml")) => MessageKind.XML
+        case _ => MessageKind.Unknown
+      }
+    }.getOrElse(MessageKind.None)
+  }
+
+  override def toString: String = toString(false)
+
+  def toString(prettyPrint: Boolean): String = {
     val buf = new StringBuilder()
     buf.append(initialLine).append("\r\n")
     headers.foreach(buf.append(_).append("\r\n"))
     buf.append("\r\n")
     body.foreach { f =>
       if (isTextBody) {
-        buf.append(FileUtils.readFileAsString(f))
+        val str = FileUtils.readFileAsString(f)
+        if (prettyPrint && kind == MessageKind.Json) {
+          buf.append(Json.prettyPrint(Json.parse(str)))
+        } else {
+          buf.append(str)
+        }
       } else {
         buf.append("(BINARY)")
       }
@@ -79,6 +101,29 @@ case class RequestMessage(requestLine: RequestLine, headers: Seq[HttpHeader], bo
   extends HttpMessage(requestLine.toString, headers, body) 
 {
   val isRequest = true
+
+  def responseKindFromPath = {
+    requestLine.path.toLowerCase match {
+      case str if (str.endsWith(".js")) => MessageKind.Script
+      case str if (str.endsWith(".css")) => MessageKind.Script
+
+      case str if (str.endsWith(".png")) => MessageKind.Image
+      case str if (str.endsWith(".jpeg")) => MessageKind.Image
+      case str if (str.endsWith(".jpg")) => MessageKind.Image
+      case str if (str.endsWith(".gif")) => MessageKind.Image
+      case str if (str.endsWith(".svg")) => MessageKind.Image
+
+      case str if (str.endsWith(".html")) => MessageKind.HTML
+      case str if (str.endsWith(".htm")) => MessageKind.HTML
+      case str if (str.endsWith(".xhtml")) => MessageKind.HTML
+
+      case str if (str.endsWith(".json")) => MessageKind.Json
+      case str if (str.endsWith(".xml")) => MessageKind.XML
+
+      case _ => MessageKind.Unknown
+    }
+  }
+
 }
 
 object RequestMessage {
@@ -95,8 +140,11 @@ case class ResponseMessage(statusLine: StatusLine, headers: Seq[HttpHeader], bod
 {
   val isRequest = false
   def isChunked = {
-    headers.find(_.name.equalsIgnoreCase("Transfer-Encoding")).map(_.value.equalsIgnoreCase("chunked")).getOrElse(false)
+    headers.find(_.name.equalsIgnoreCase("Transfer-Encoding"))
+      .map(_.value.equalsIgnoreCase("chunked"))
+      .getOrElse(false)
   }
+
 }
 
 object ResponseMessage {
@@ -111,6 +159,7 @@ object ResponseMessage {
 
 case class RequestLine(method: String, version: String, uri: String) {
 
+  def path = uri.takeWhile(_ != '?')
   override def toString = s"$method $uri $version"
 }
 
@@ -143,4 +192,17 @@ object StatusLine {
 
 case class HttpHeader(name: String, value: String) {
   override def toString = s"$name: $value"
+}
+
+sealed abstract class MessageKind(name: String) {
+  override def toString = name
+}
+object MessageKind {
+  case object None    extends MessageKind("None")
+  case object Image   extends MessageKind("Image")
+  case object Script  extends MessageKind("Script")
+  case object HTML    extends MessageKind("HTML")
+  case object Json    extends MessageKind("Json")
+  case object XML     extends MessageKind("XML")
+  case object Unknown extends MessageKind("Unknown")
 }

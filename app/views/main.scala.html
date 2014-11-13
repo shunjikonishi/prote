@@ -3,6 +3,7 @@
 <html ng-app="App">
 <head>
   <title>PROTE</title>
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="assets/stylesheets/main.css" />
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
   <script src="assets/javascripts/ext/angular.min.js"></script>
@@ -16,6 +17,32 @@
       <bg-pane min-size="100">
         <div class="ctrl">
           <h1 class="logo">PROTE</h1>
+          <div>
+            <div class="clear">
+              <button class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
+            </div>
+            <h2 class="ctrl-header">Filters</h2>
+            <ul class="filters">
+              <li>
+                <label>
+                  <input type="checkbox" ng-model="filters.image">
+                  Hide images
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" ng-model="filters.script">
+                  Hide js and css
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" ng-model="filters.html">
+                  Hide html
+                </label>
+              </li>
+            </ul>
+          </div>
         </div>
         <div class="main" id="main">
           <table class="table table-hover">
@@ -26,7 +53,10 @@
                 <th class="time">Time(ms)</th>
               </tr>
             </thead>
-              <tr ng-repeat="request in list" ng-class="tableClass(request)" ng-click="clickTableRow(request)">
+              <tr 
+                ng-repeat="request in list | filter:filterRow" 
+                ng-class="tableClass(request)" 
+                ng-click="clickTableRow(request)">
                 <td class="request">{{request.method}} {{request.uri}}</td>
                 <td class="status">{{request.status}}</td>
                 <td class="time">{{request.time}}</td>
@@ -39,11 +69,35 @@
       <bg-pane min-size="150">
         <bg-splitter orientation="horizontal">
           <bg-pane min-size="50">
-            <h2 class="msg-header">Request</h2>
+            <div>
+              <h2 class="msg-header">Request</h2>
+              <div class="msg-buttons">
+                <button class="btn btn-xs btn-info" 
+                  ng-show="selectedRequest.isRequestJson() && !selectedRequest.requestPrettyPrint()"
+                  ng-click="showRequest(true)"
+                >PrettyPrint</button>
+                <button class="btn btn-xs btn-info" 
+                  ng-show="selectedRequest.isRequestJson() && selectedRequest.requestPrettyPrint()"
+                  ng-click="showRequest(false)"
+                >Raw</button>
+              </div>
+            </div>
             <pre class="msg-body" ng-bind="requestMessage"></pre>
           </bg-pane>
           <bg-pane min-size="50">
-            <h2 class="msg-header">Response</h2>
+            <div>
+              <h2 class="msg-header">Response</h2>
+              <div class="msg-buttons">
+                <button class="btn btn-xs btn-info" 
+                  ng-show="selectedRequest.isResponseJson() && !selectedRequest.responsePrettyPrint()"
+                  ng-click="showResponse(true)"
+                >PrettyPrint</button>
+                <button class="btn btn-xs btn-info" 
+                  ng-show="selectedRequest.isResponseJson() && selectedRequest.responsePrettyPrint()"
+                  ng-click="showResponse(false)"
+                >Raw</button>
+              </div>
+            </div>
             <pre class="msg-body" ng-bind="responseMessage"></pre>
           </bg-pane>
         </bg-splitter>

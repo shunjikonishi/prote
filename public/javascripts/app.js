@@ -1,13 +1,75 @@
 var app = angular.module('App', ['bgDirectives'])
 	.controller("MainController", function($scope) 
 {
-	var LIST_MAX = 1000;
+	var LIST_MAX = 1000,
+		MessageKind = (function() {
+			var array = [
+					"None",
+					"Image",
+					"Script",
+					"HTML",
+					"Json",
+					"XML",
+					"Unknown"
+				],
+				ret = {};
+			$.each(array, function(idx, value) {
+				ret[value] = value;
+			});
+			return ret;
+		})();
+	function SelectedRequest() {
+		var self = this,
+			selected = null,
+			reqPrettyPrint = false,
+			resPrettyPrint = false;
+
+		function current(v) {
+			if (v === undefined) {
+				return selected;
+			} else {
+				selected = v;
+				reqPrettyPrint = false;
+				resPrettyPrint = false;
+				return self;
+			}
+		}
+		function isRequestJson() {
+			return !!selected && selected.reqKind === MessageKind.Json;
+		}
+		function isResponseJson() {
+			return !!selected && selected.resKind === MessageKind.Json;
+		}
+		function requestPrettyPrint(v) {
+			if (v === undefined) {
+				return reqPrettyPrint;
+			} else {
+				reqPrettyPrint = v;
+				return self;
+			}
+		}
+		function responsePrettyPrint(v) {
+			if (v === undefined) {
+				return resPrettyPrint;
+			} else {
+				resPrettyPrint = v;
+				return self;
+			}
+		}
+		$.extend(this, {
+			"current": current,
+			"isRequestJson": isRequestJson,
+			"isResponseJson": isResponseJson,
+			"requestPrettyPrint": requestPrettyPrint,
+			"responsePrettyPrint": responsePrettyPrint
+		});
+	}
 	function process(data) {
 		$scope.$apply(function() {
-			if ($scope.list.length > LIST_MAX) {
-				$scope.list.shift();
+			if (list.length > LIST_MAX) {
+				list.shift();
 			}
-			$scope.list.push(data);
+			list.push(data);
 			setTimeout(function() {
 				var mainDiv = $("#main")[0];
 				mainDiv.scrollTop = mainDiv.scrollHeight;
@@ -32,34 +94,74 @@ var app = angular.module('App', ['bgDirectives'])
 		return "";
 	}
 	function clickTableRow(request) {
+		selected.current(request);
+		showRequest(false);
+		showResponse(false);
+	}
+	function showRequest(prettyPrint) {
+		request = selected.current();
 		con.request({
 			"command": "request", 
 			"data" : {
-				"id": request.id
+				"id": request.id,
+				"prettyPrint": prettyPrint
 			},
 			"success": function(data) {
 				$scope.$apply(function() {
 					$scope.requestMessage = data;
-				});
-			}
-		});
-		con.request({
-			"command": "response", 
-			"data" : {
-				"id": request.id
-			},
-			"success": function(data) {
-				$scope.$apply(function() {
-					$scope.responseMessage = data;
+					selected.requestPrettyPrint(prettyPrint);
 				});
 			}
 		});
 	}
-	var con = null;
+	function showResponse(prettyPrint) {
+		request = selected.current();
+		con.request({
+			"command": "response", 
+			"data" : {
+				"id": request.id,
+				"prettyPrint": prettyPrint
+			},
+			"success": function(data) {
+				$scope.$apply(function() {
+					$scope.responseMessage = data;
+					selected.responsePrettyPrint(prettyPrint);
+				});
+			}
+		});
+	}
+	function filterRow(value, idx) {
+		if (filters.image && value.resKind == MessageKind.Image) return false;
+		if (filters.script && value.resKind == MessageKind.Script) return false;
+		if (filters.html && value.resKind == MessageKind.HTML) return false;
+		return true;
+	}
+	function clear() {
+		list = [];
+		$scope.list = list;
+	}
+	function test() {
+		console.log(selected.isResponseJson(), selected.responsePrettyPrint());
+	}
+	var con = null,
+		list = [],
+		selected = new SelectedRequest(),
+		filters = {
+			"image": false,
+			"script": false,
+			"html": false
+		}
 	$.extend($scope, {
-		"list": [],
+		"list": list,
+		"filters": filters,
+		"selectedRequest": selected,
 		"tableClass": tableClass,
-		"clickTableRow": clickTableRow
+		"clickTableRow": clickTableRow,
+		"filterRow": filterRow,
+		"showRequest": showRequest,
+		"showResponse": showResponse,
+		"clear": clear,
+		"test": test
 	});
 	$(init)
 });
