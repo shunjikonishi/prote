@@ -50,7 +50,7 @@
               <tr>
                 <th class="request">Request</th>
                 <th class="status">Status</th>
-                <th class="time">Time(ms)</th>
+                <th class="time">Time</th>
               </tr>
             </thead>
               <tr 
@@ -59,7 +59,7 @@
                 ng-click="clickTableRow(request)">
                 <td class="request">{{request.method}} {{request.uri}}</td>
                 <td class="status">{{request.status}}</td>
-                <td class="time">{{request.time}}</td>
+                <td class="time">{{request.time}}ms</td>
               </tr>
             <tbody>
             </tbody>

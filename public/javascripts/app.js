@@ -85,6 +85,9 @@ var app = angular.module('App', ['bgDirectives'])
 		con.on("process", process);
 	}
 	function tableClass(request) {
+		if (selected.current() && selected.current().id === request.id) {
+			return "info";
+		}
 		if (request.status >= 400) {
 			return "warning";
 		}
@@ -139,6 +142,9 @@ var app = angular.module('App', ['bgDirectives'])
 	function clear() {
 		list = [];
 		$scope.list = list;
+		selected.current(null);
+		$scope.requestMessage = null;
+		$scope.responseMessage = null;
 	}
 	function test() {
 		console.log(selected.isResponseJson(), selected.responsePrettyPrint());
@@ -161,7 +167,9 @@ var app = angular.module('App', ['bgDirectives'])
 		"showRequest": showRequest,
 		"showResponse": showResponse,
 		"clear": clear,
-		"test": test
+		"test": test,
+		"requestMessage": null,
+		"responseMessage": null
 	});
 	$(init)
 });
