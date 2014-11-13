@@ -28,9 +28,9 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
     }
   }
 
-  def findHeader(name: String): Option[HttpHeader] = headers.find(h => name.equalsIgnoreCase(h.name))
+  def getHeader(name: String): Option[String] = headers.find(h => name.equalsIgnoreCase(h.name)).map(_.value)
 
-  def contentType = findHeader("Content-Type").map(_.value.takeWhile(_ != ';')).getOrElse("application/octet-stream")
+  def contentType = getHeader("Content-Type").map(_.takeWhile(_ != ';')).getOrElse("application/octet-stream")
 
   lazy val headersToMap: Map[String, String] = {
     val (cookies, others) = headers.partition(_.name.toLowerCase == "set-cookie")
