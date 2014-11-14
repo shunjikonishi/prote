@@ -121,6 +121,17 @@ class StorageManager(val dir: File, cookieName: String) {
     ret.saveHeaders(createFile(id + ".response.headers"))
     ret
   }
+
+  def getFile(filename: String): Option[File] = {
+    val file = new File(dir, filename)
+    if (file.exists) Some(file) else None
+  }
+
+  def saveToFile(filename: String, text: String): File = {
+    val file = createFile(filename)
+    FileUtils.writeFile(file, text, "utf-8")
+    file
+  }
 }
 
 object StorageManager extends StorageManager(

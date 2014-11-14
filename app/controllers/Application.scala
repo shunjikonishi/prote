@@ -2,7 +2,10 @@ package controllers
 
 import play.api._
 import play.api.mvc._
+import play.api.data.Form
+import play.api.data.Forms._
 import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.Enumeratee
 
 import com.ning.http.client.AsyncHttpClient
 import com.ning.http.client.Request.EntityWriter
@@ -16,12 +19,14 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
 import java.net.URI
+import java.net.URISyntaxException
 import java.util.UUID
 import models.AppConfig
 import models.StorageManager
 import models.WebSocketManager
 import models.CacheManager
 import models.HostInfo
+import models.testgen.MochaTestGenerator
 
 object Application extends Controller {
 
@@ -47,7 +52,7 @@ object Application extends Controller {
             }
             hosts.find(_.name == host).map(h => HostInfo(h.name, uri.getScheme == "https"))
           } catch {
-            case e => None
+            case e: URISyntaxException => None
           }
         }
     }
@@ -149,5 +154,37 @@ object Application extends Controller {
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(throw new IllegalStateException())
     val h = WebSocketManager.getInvoker(sessionId)
     (h.in, h.out)
+  }
+
+  def generateTest = Action { implicit request =>
+    Form(tuple(
+      "desc" -> optional(text),
+      "ids" -> list(text)
+    )).bindFromRequest.fold(
+      hasErrors={ form => 
+        println("Invalid Request: " + form)
+        throw new IllegalStateException()
+      },
+      success={ case (desc, ids) =>
+        Ok(MochaTestGenerator.generate(desc.getOrElse("Auto generate test"), ids)).as("application/octet-stream")
+      }
+    )
+  }
+
+  def download(id: String) = Action { implicit request =>
+    StorageManager.getFile(id + ".js").map { file =>
+      sendFile(file, "test.js")
+    }.getOrElse(NotFound)
+  }
+
+  private def sendFile(content: File, filename: String): Result = {
+    Result(
+      ResponseHeader(200, Map(
+        CONTENT_LENGTH -> content.length.toString,
+        CONTENT_TYPE -> play.api.http.ContentTypes.BINARY,
+        CONTENT_DISPOSITION -> "attachment; filename=\"%s\"".format(filename)
+      )),
+      Enumerator.fromFile(content) &> Enumeratee.onIterateeDone(() => content.delete)
+    )
   }
 }

@@ -21,6 +21,9 @@ module.exports = function (grunt) {
 				src: ['bower_components/angular/*.js', 'bower_components/angular/*.map', 'bower_components/bg-splitter/js/*.js'],
 				dest: 'public/javascripts/ext'
 			}
+		},
+		jshint : {
+			test : ['test/*.js']
 		}
 	});
 

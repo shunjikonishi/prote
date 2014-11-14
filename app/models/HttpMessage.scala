@@ -168,7 +168,7 @@ case class RequestLine(method: String, version: String, uri: String) {
 object RequestLine {
   def apply(line: String): RequestLine = {
     line.split(" ").toList match {
-      case method :: version :: uri :: Nil => RequestLine(method, version, uri)
+      case method :: uri :: version :: Nil => RequestLine(method, version, uri)
       case _ => throw new IllegalArgumentException(line)
     }
   }

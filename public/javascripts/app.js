@@ -1,5 +1,5 @@
 var app = angular.module('App', ['bgDirectives'])
-	.controller("MainController", function($scope) 
+	.controller("MainController", function($scope, $filter) 
 {
 	var LIST_MAX = 1000,
 		MessageKind = (function() {
@@ -133,7 +133,7 @@ var app = angular.module('App', ['bgDirectives'])
 			}
 		});
 	}
-	function filterRow(value, idx) {
+	function filterRow(value) {
 		if (filters.image && value.resKind == MessageKind.Image) return false;
 		if (filters.script && value.resKind == MessageKind.Script) return false;
 		if (filters.html && value.resKind == MessageKind.HTML) return false;
@@ -145,6 +145,21 @@ var app = angular.module('App', ['bgDirectives'])
 		selected.current(null);
 		$scope.requestMessage = null;
 		$scope.responseMessage = null;
+	}
+	function generateTest() {
+		var ids = [];
+		$.each($filter("filter")(list, filterRow), function(idx, value) {
+			ids.push(value.id);
+		});
+		con.request({
+			"command": "generateTest", 
+			"data" : {
+				"ids": ids
+			},
+			"success": function(data) {
+				window.open("/" + $scope.contextPath + "/download/" + data);
+			}
+		});
 	}
 	function test() {
 		console.log(selected.isResponseJson(), selected.responsePrettyPrint());
@@ -167,6 +182,7 @@ var app = angular.module('App', ['bgDirectives'])
 		"showRequest": showRequest,
 		"showResponse": showResponse,
 		"clear": clear,
+		"generateTest": generateTest,
 		"test": test,
 		"requestMessage": null,
 		"responseMessage": null

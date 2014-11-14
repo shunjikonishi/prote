@@ -2,6 +2,8 @@ package models
 
 import roomframework.command._
 import play.api.libs.json._
+import java.util.UUID
+import models.testgen.MochaTestGenerator
 
 class WebSocketInvoker(sessionId: String) extends CommandInvoker {
 
@@ -20,6 +22,17 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       val prettyPrint = (command.data \ "prettyPrint").asOpt[Boolean].getOrElse(false)
       val msg = StorageManager.getResponseMessage(id)
       command.text(msg.toString(prettyPrint))
+    }
+    addHandler("generateTest") { command =>
+      val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
+      val ids = (command.data \ "ids") match {
+        case JsArray(seq) => seq.map(_.as[String])
+        case _ => throw new IllegalArgumentException()
+      }
+      val script = MochaTestGenerator.generate(desc, ids)
+      val id = UUID.randomUUID.toString
+      StorageManager.saveToFile(id + ".js", script)
+      command.text(id)
     }
   }
 

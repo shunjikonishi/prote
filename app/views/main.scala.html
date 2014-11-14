@@ -42,6 +42,7 @@
                 </label>
               </li>
             </ul>
+            <button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button>
           </div>
         </div>
         <div class="main" id="main">
@@ -103,6 +104,10 @@
         </bg-splitter>
       </bg-pane>
     </bg-splitter>
+    <form action="{{'/' + contextPath + '/test.js'}}" method="POST" id="generate-form">
+      <input type="hidden" name="desc" value="">
+      <input type="hidden" name="ids" ng-repeat="request in list | filter:filterRow" value="{{request.id}}">
+    </form>
   </div>
 </body>
 </html>

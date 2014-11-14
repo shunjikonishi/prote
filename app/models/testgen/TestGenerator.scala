@@ -2,15 +2,14 @@ package models.testgen
 
 import models.StorageManager
 import java.io.File
+import jp.co.flect.io.FileUtils
 
-trait TestGenerator {
-  val sm: StorageManager
-  val ssl: Boolean
+abstract class TestGenerator(sm: StorageManager) {
   
-  def generate(name: String, desc: String, requests: Seq[String]): File = {
-    val ret = File.createTempFile("tmp", name)
-    ret.deleteOnExit
-    ret
+  protected def doGenerate(desc: String, messages: Seq[MessageWrapper]): String
+
+  def generate(desc: String, requests: Seq[String]): String = {
+    doGenerate(desc, requests.map(id => MessageWrapper(sm.getRequestMessage(id), sm.getResponseMessage(id))))
   }
 }
 
