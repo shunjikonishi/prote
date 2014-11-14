@@ -18,6 +18,7 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
     } else {
       val ct = contentType.toLowerCase
       ct match {
+        case str if (str == "application/x-www-form-urlencoded") => true
         case str if (str.startsWith("text")) => true
         case str if (str.endsWith("xml")) => true
         case str if (str.endsWith("json")) => true
