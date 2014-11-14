@@ -15,23 +15,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
+import java.net.URI
 import java.util.UUID
 import models.AppConfig
 import models.StorageManager
 import models.WebSocketManager
+import models.CacheManager
+import models.HostInfo
 
 object Application extends Controller {
 
   def proxy = Action.async(parse.raw) { implicit request =>
-    def protocol = {
-      if (AppConfig.forceSSL) {
-        "https"
-      } else {
-        request.headers.get("x-forwarded-proto").getOrElse {
-          if (request.secure) "https" else "http"
-        }
-      }
-    }
     def escape(str: String) = {
       str.foldLeft(new StringBuilder()) { (buf, c) =>
         c match {
@@ -41,17 +35,35 @@ object Application extends Controller {
         buf
       }.toString
     }
-    AppConfig.targetHost.map { targetHost =>
-      val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
+    def getRedirectHost(response: Response, hosts: Seq[HostInfo]): Option[HostInfo] = {
+      Option(response.getHeader("Location"))
+        .filter(_.startsWith("http"))
+        .flatMap { str =>
+          try {
+            val uri = new URI(str)
+            val host = uri.getPort match {
+              case -1 | 80 | 443 => uri.getHost
+              case n => uri.getHost + ":" + n
+            }
+            hosts.find(_.name == host).map(h => HostInfo(h.name, uri.getScheme == "https"))
+          } catch {
+            case e => None
+          }
+        }
+    }
+    val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
+    val cache = CacheManager(sessionId)
+    val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
+    hosts.headOption.map { targetHost =>
       val sm = StorageManager
       val requestId = UUID.randomUUID.toString
-      val requestMessage = sm.createRequestMessage(request, requestId)
+      val requestMessage = sm.createRequestMessage(targetHost, request, requestId)
       if (Logger.isDebugEnabled) {
         Logger.debug(requestMessage.toString)
       }
 
       val ret = Promise[Result]()
-      val url = protocol + "://" + targetHost + escape(request.uri)
+      val url = targetHost.protocol + "://" + targetHost.name + escape(request.uri)
       val client = new AsyncHttpClient()
       val proxyReq = requestMessage.headers.foldLeft(request.method match {
         case "GET" =>client.prepareGet(url)
@@ -84,22 +96,37 @@ object Application extends Controller {
       val start = System.currentTimeMillis
       proxyReq.execute(new AsyncCompletionHandler[Response](){
         override def onCompleted(response: Response): Response = {
-          val responseMessage = sm.createResponseMessage(request, response, requestId)
+          val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
           val time = System.currentTimeMillis - start
           if (Logger.isDebugEnabled) {
             Logger.debug(responseMessage.toString)
+          }
+          val redirectHost = getRedirectHost(response, hosts)
+          val headers = responseMessage.headersToMap.map { case (name, value) =>
+            val newValue = if (name.equalsIgnoreCase("Location")) {
+              redirectHost.map { host =>
+                val protocol = if (host.ssl && AppConfig.sslSupported) "https" else "http"
+                protocol + "://" + request.host + value.substring(value.indexOf(host.name) + host.name.length)
+              }.getOrElse(value)
+            } else {
+              value
+            }
+            (name, newValue)
           }
           val body = responseMessage.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
           val result = (if (responseMessage.isChunked) {
             Status(response.getStatusCode)
               .chunked(body)
-              .withHeaders(responseMessage.headersToMap.toSeq:_*)
+              .withHeaders(headers.toSeq:_*)
           } else {
-            val header = ResponseHeader(response.getStatusCode, responseMessage.headersToMap)
+            val header = ResponseHeader(response.getStatusCode, headers)
             Result(header, body)
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
           WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+
+          val nextHost = redirectHost.getOrElse(hosts.head)
+          cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
           response
         }
         override def onThrowable(t: Throwable) = {

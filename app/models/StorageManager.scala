@@ -15,7 +15,7 @@ import com.ning.http.client.Response
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
-class StorageManager(val dir: File, targetHost: String, cookieName: String) {
+class StorageManager(val dir: File, cookieName: String) {
 
   private def createFile(filename: String) = {
     val ret = new File(dir, filename)
@@ -27,8 +27,12 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     Json.parse(FileUtils.readFile(file))
   }
 
-  private def parseHeaders(json: JsValue): Seq[HttpHeader] = {
-    json \ "headers" match {
+  private def parseHeaders(json: JsValue): (HostInfo, Seq[HttpHeader]) = {
+    val host = HostInfo(
+      (json \ "host").as[String],
+      (json \ "protocol").as[String] == "https"
+    )
+    val headers = json \ "headers" match {
       case JsArray(seq) => seq.map { h =>
         val name = (h \ "name").as[String]
         val value = (h \ "value").as[String]
@@ -36,6 +40,7 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
       }
       case _ => throw new IllegalStateException()
     }
+    (host, headers)
   }
 
   def getRequestMessage(id: String) = {
@@ -44,8 +49,8 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     val json = readJson(headerFile)
 
     val requestLine = (json \ "requestLine").as[String]
-    val headers = parseHeaders(json)
-    RequestMessage(requestLine, headers, bodyFile)
+    val (host, headers) = parseHeaders(json)
+    RequestMessage(host, requestLine, headers, bodyFile)
   }
 
   def getResponseMessage(id: String) = {
@@ -54,17 +59,17 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     val json = readJson(headerFile)
 
     val statusLine = (json \ "statusLine").as[String]
-    val headers = parseHeaders(json)
-    ResponseMessage(statusLine, headers, bodyFile)
+    val (host, headers) = parseHeaders(json)
+    ResponseMessage(host, statusLine, headers, bodyFile)
   }
 
-  def createRequestMessage(request: Request[RawBuffer], id: String): RequestMessage = {
+  def createRequestMessage(host: HostInfo, request: Request[RawBuffer], id: String): RequestMessage = {
     val requestLine = RequestLine(request.method, request.version, request.uri)
     val headers = request.headers.toMap.flatMap { case (k, v) =>
       if (k.equalsIgnoreCase("Host")) {
-        Seq(HttpHeader(k, targetHost))
+        Seq(HttpHeader(k, host.name))
       } else if (k.equalsIgnoreCase("Origin") || k.equalsIgnoreCase("Referer")) {
-        Seq(HttpHeader(k, v.head.replace(request.host, targetHost)))
+        Seq(HttpHeader(k, v.head.replace(request.host, host.name)))
       } else if (k.equalsIgnoreCase("Cookie")) {
         val replace = cookieName + "=[A-Za-z0-9-]*;?"
         v.map( v => HttpHeader(k, v.replaceFirst(replace, "")))
@@ -80,12 +85,12 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     } else {
       None
     }
-    val ret = RequestMessage(requestLine, headers, body)
+    val ret = RequestMessage(host, requestLine, headers, body)
     ret.saveHeaders(createFile(id + ".request.headers"))
     ret
   }
 
-  def createResponseMessage(request: RequestHeader, response: Response, id: String): ResponseMessage = {
+  def createResponseMessage(host: HostInfo, request: RequestHeader, response: Response, id: String): ResponseMessage = {
     val statusLine = StatusLine(response.getStatusCode, request.version, Option(response.getStatusText))
     val headers = mapAsScalaMapConverter(response.getHeaders).asScala.flatMap { case (k, v) =>
       v.map(HttpHeader(k, _))
@@ -112,7 +117,7 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
     } else {
       None
     }
-    val ret = ResponseMessage(statusLine, headers, body)
+    val ret = ResponseMessage(host, statusLine, headers, body)
     ret.saveHeaders(createFile(id + ".response.headers"))
     ret
   }
@@ -120,7 +125,6 @@ class StorageManager(val dir: File, targetHost: String, cookieName: String) {
 
 object StorageManager extends StorageManager(
   new File("proxy_logs"), 
-  AppConfig.targetHost.getOrElse("unknown"),
   AppConfig.cookieName
 ) {
   dir.mkdirs

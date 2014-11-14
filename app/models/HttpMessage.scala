@@ -5,7 +5,7 @@ import play.api.libs.json._
 import java.io.File
 import jp.co.flect.io.FileUtils
 
-abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: Option[File]) {
+abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[HttpHeader], body: Option[File]) {
   def isRequest: Boolean
   def isResponse = !isRequest
 
@@ -47,6 +47,8 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
   def toJson = {
     val initialLineKey = if (isRequest) "requestLine" else "statusLine"
     JsObject(Seq(
+      "host" -> JsString(host.name),
+      "protocol" -> JsString(host.protocol),
       initialLineKey -> JsString(initialLine),
       "headers" -> JsArray(headers.map(h => JsObject(Seq(
         "name" -> JsString(h.name),
@@ -96,8 +98,8 @@ abstract class HttpMessage(initialLine: String, headers: Seq[HttpHeader], body: 
   }
 }
 
-case class RequestMessage(requestLine: RequestLine, headers: Seq[HttpHeader], body: Option[File])
-  extends HttpMessage(requestLine.toString, headers, body) 
+case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq[HttpHeader], body: Option[File])
+  extends HttpMessage(host, requestLine.toString, headers, body) 
 {
   val isRequest = true
 
@@ -126,16 +128,16 @@ case class RequestMessage(requestLine: RequestLine, headers: Seq[HttpHeader], bo
 }
 
 object RequestMessage {
-  def apply(requestLine: String, headers: Seq[HttpHeader], body: File): RequestMessage = {
-    RequestMessage(RequestLine(requestLine), headers, body.exists match {
+  def apply(host: HostInfo, requestLine: String, headers: Seq[HttpHeader], body: File): RequestMessage = {
+    RequestMessage(host, RequestLine(requestLine), headers, body.exists match {
       case true => Some(body)
       case false => None
     })
   }
 }
 
-case class ResponseMessage(statusLine: StatusLine, headers: Seq[HttpHeader], body: Option[File])
-  extends HttpMessage(statusLine.toString, headers, body) 
+case class ResponseMessage(host: HostInfo, statusLine: StatusLine, headers: Seq[HttpHeader], body: Option[File])
+  extends HttpMessage(host, statusLine.toString, headers, body) 
 {
   val isRequest = false
   def isChunked = {
@@ -147,8 +149,8 @@ case class ResponseMessage(statusLine: StatusLine, headers: Seq[HttpHeader], bod
 }
 
 object ResponseMessage {
-  def apply(statusLine: String, headers: Seq[HttpHeader], body: File): ResponseMessage = {
-    ResponseMessage(StatusLine(statusLine), headers, body.exists match {
+  def apply(host: HostInfo, statusLine: String, headers: Seq[HttpHeader], body: File): ResponseMessage = {
+    ResponseMessage(host, StatusLine(statusLine), headers, body.exists match {
       case true => Some(body)
       case false => None
     })
