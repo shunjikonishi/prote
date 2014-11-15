@@ -27,6 +27,7 @@ import models.WebSocketManager
 import models.CacheManager
 import models.HostInfo
 import models.testgen.MochaTestGenerator
+import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
 
@@ -40,6 +41,17 @@ object Application extends Controller {
         buf
       }.toString
     }
+    def getHostName(ssl: Boolean): String = {
+      request.headers.get("x-forwarded-for")
+        .map(_ => request.host)
+        .getOrElse {
+          if (ssl) {
+            request.domain + ":" + AppConfig.httpsPort.getOrElse(throw new SSLNotSupportedException())
+          } else {
+            request.domain + ":" + AppConfig.httpPort
+          }
+        }
+    } 
     def getRedirectHost(response: Response, hosts: Seq[HostInfo]): Option[HostInfo] = {
       Option(response.getHeader("Location"))
         .filter(_.startsWith("http"))
@@ -110,8 +122,9 @@ object Application extends Controller {
           val headers = responseMessage.headersToMap.map { case (name, value) =>
             val newValue = if (name.equalsIgnoreCase("Location")) {
               redirectHost.map { host =>
-                val protocol = if (host.ssl && AppConfig.sslSupported) "https" else "http"
-                protocol + "://" + request.host + value.substring(value.indexOf(host.name) + host.name.length)
+                host.protocol + "://" + 
+                  getHostName(host.ssl) +
+                  value.substring(value.indexOf(host.name) + host.name.length)
               }.getOrElse(value)
             } else {
               value
@@ -187,4 +200,5 @@ object Application extends Controller {
       Enumerator.fromFile(content) &> Enumeratee.onIterateeDone(() => content.delete)
     )
   }
+
 }

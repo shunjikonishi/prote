@@ -2,9 +2,13 @@ import play.api.Application
 import play.api.GlobalSettings
 import play.api.mvc.Handler
 import play.api.mvc.RequestHeader
+import play.api.mvc.Result
+import play.api.mvc.Results.InternalServerError
+import scala.concurrent.Future
 import models.AppConfig
 import scala.collection.JavaConversions._
 import java.io.File
+import exceptions.SSLNotSupportedException
 
 object Global extends GlobalSettings {
   
@@ -24,6 +28,14 @@ object Global extends GlobalSettings {
       super.onRouteRequest(newRequest)
     } else {
       Some(controllers.Application.proxy)
+    }
+  }
+
+  override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
+    ex match {
+      case e: SSLNotSupportedException => 
+        Future.successful(InternalServerError("https.port is not defined. Use 'activator -Dhttps.port=9443 run'"))
+      case e: Throwable => super.onError(request, e)
     }
   }
 }
