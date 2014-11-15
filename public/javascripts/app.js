@@ -157,7 +157,7 @@ var app = angular.module('App', ['bgDirectives'])
 				"ids": ids
 			},
 			"success": function(data) {
-				window.open("/" + $scope.contextPath + "/download/" + data);
+				location.href = "/" + $scope.contextPath + "/download/" + data;
 			}
 		});
 	}
