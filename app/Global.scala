@@ -32,10 +32,12 @@ object Global extends GlobalSettings {
   }
 
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
-    ex match {
+println("onError1: " + ex.getClass)
+    ex.getCause match {
       case e: SSLNotSupportedException => 
-        Future.successful(InternalServerError("https.port is not defined. Use 'activator -Dhttps.port=9443 run'"))
-      case e: Throwable => super.onError(request, e)
+        Future.successful(InternalServerError(e.getMessage))
+      case _ => 
+        super.onError(request, ex)
     }
   }
 }
