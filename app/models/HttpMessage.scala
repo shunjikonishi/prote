@@ -97,6 +97,12 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
     }
     buf.toString
   }
+
+  def copyTo(dest: File, newId: String) = {
+    val middle = if (isRequest) ".request" else ".response"
+    saveHeaders(new File(dest, newId + middle + ".headers"))
+    body.foreach(f => FileUtils.copy(f, new File(dest, newId + middle + ".body")))
+  }
 }
 
 case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq[HttpHeader], body: Option[File])
@@ -107,6 +113,7 @@ case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq
   def responseKindFromPath = {
     requestLine.path.toLowerCase match {
       case str if (str.endsWith(".js")) => MessageKind.Script
+      case str if (str.endsWith(".js.map")) => MessageKind.Script
       case str if (str.endsWith(".css")) => MessageKind.Script
 
       case str if (str.endsWith(".png")) => MessageKind.Image

@@ -187,6 +187,9 @@ object Application extends Controller {
   def download(id: String) = Action { implicit request =>
     StorageManager.getFile(id + ".js").map { file =>
       sendFile(file, "test.js")
+    }.orElse {
+      new StorageManager(new File("test"), AppConfig.cookieName).getFile(id + ".js")
+        .map(file => sendFile(file, "test.js"))
     }.getOrElse(NotFound)
   }
 

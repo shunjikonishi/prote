@@ -115,6 +115,9 @@
   cursor: pointer;
 }
 
+.main table .kind {
+  width: 80px;
+}
 .main table .request {
   width: auto;
 }

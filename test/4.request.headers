@@ -1,0 +1,36 @@
+{
+  "host" : "flt.backlog.jp",
+  "protocol" : "https",
+  "requestLine" : "GET /favicon.ico HTTP/1.1",
+  "headers" : [ {
+    "name" : "Accept",
+    "value" : "image/webp,*/*;q=0.8"
+  }, {
+    "name" : "Accept-Encoding",
+    "value" : "gzip,deflate,sdch"
+  }, {
+    "name" : "Accept-Language",
+    "value" : "ja,en-US;q=0.8,en;q=0.6,sw;q=0.4"
+  }, {
+    "name" : "Cache-Control",
+    "value" : "no-cache"
+  }, {
+    "name" : "Connection",
+    "value" : "keep-alive"
+  }, {
+    "name" : "Cookie",
+    "value" : "notifyTweet=0; PLAY_SESSION=\"08ca6b5049fe118e4bf05fbd76c6641c910858dc-sessionId=bccbbf55-d923-4b91-9a2d-0d0c203e703d\"; csm-hit=s-0XN2SKN232PZGMSQVVQN|1415800827451; dal=47505304; login=8f6c94e5e3e7b2d73ca84926d1b19bc3; JSESSIONID=357ABB8E1CBCDED9D135E3D3448F5AAB-mc2.4; "
+  }, {
+    "name" : "Host",
+    "value" : "flt.backlog.jp"
+  }, {
+    "name" : "Pragma",
+    "value" : "no-cache"
+  }, {
+    "name" : "Referer",
+    "value" : "https://flt.backlog.jp/dashboard"
+  }, {
+    "name" : "User-Agent",
+    "value" : "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36"
+  } ]
+}

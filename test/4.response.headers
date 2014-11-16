@@ -1,0 +1,33 @@
+{
+  "host" : "flt.backlog.jp",
+  "protocol" : "https",
+  "statusLine" : "HTTP/1.1 200 OK",
+  "headers" : [ {
+    "name" : "Server",
+    "value" : "nginx"
+  }, {
+    "name" : "Date",
+    "value" : "Sun, 16 Nov 2014 04:37:28 GMT"
+  }, {
+    "name" : "Content-Type",
+    "value" : "image/x-icon"
+  }, {
+    "name" : "Content-Length",
+    "value" : "4286"
+  }, {
+    "name" : "Last-Modified",
+    "value" : "Mon, 20 Oct 2014 02:08:20 GMT"
+  }, {
+    "name" : "Connection",
+    "value" : "keep-alive"
+  }, {
+    "name" : "ETag",
+    "value" : "\"54446e94-10be\""
+  }, {
+    "name" : "Strict-Transport-Security",
+    "value" : "max-age=31536000"
+  }, {
+    "name" : "Accept-Ranges",
+    "value" : "bytes"
+  } ]
+}

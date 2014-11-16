@@ -3,6 +3,7 @@ package models
 import roomframework.command._
 import play.api.libs.json._
 import java.util.UUID
+import java.io.File
 import models.testgen.MochaTestGenerator
 
 class WebSocketInvoker(sessionId: String) extends CommandInvoker {
@@ -34,6 +35,18 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       StorageManager.saveToFile(id + ".js", script)
       command.text(id)
     }
+    addHandler("test") { command =>
+      val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
+      val ids = (command.data \ "ids") match {
+        case JsArray(seq) => seq.map(_.as[String])
+        case _ => throw new IllegalArgumentException()
+      }
+      val sm = new StorageManager(new File("test"), AppConfig.cookieName)
+      val script = new MochaTestGenerator(sm).generate(desc, ids)
+      val id = UUID.randomUUID.toString
+      sm.saveToFile(id + ".js", script)
+      command.text(id)
+    }
   }
 
   def process(id: String, request: RequestMessage, response: ResponseMessage, time: Long) = {
@@ -44,6 +57,7 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
     }
     val command = new CommandResponse("process", JsObject(Seq(
       "id" -> JsString(id),
+      "protocol" -> JsString(request.host.protocol),
       "method" -> JsString(request.requestLine.method),
       "uri" -> JsString(request.requestLine.uri),
       "reqKind" -> JsString(reqKind.toString),

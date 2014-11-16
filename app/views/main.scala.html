@@ -43,12 +43,15 @@
               </li>
             </ul>
             <button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button>
+            <br>
+            <button class="btn btn-sm btn-info" ng-click="test()">Generate test</button>
           </div>
         </div>
         <div class="main" id="main">
           <table class="table table-hover">
             <thead>
               <tr>
+                <th class="kind">Kind</th>
                 <th class="request">Request</th>
                 <th class="status">Status</th>
                 <th class="time">Time</th>
@@ -58,6 +61,7 @@
                 ng-repeat="request in list | filter:filterRow" 
                 ng-class="tableClass(request)" 
                 ng-click="clickTableRow(request)">
+                <td class="request">{{request.protocol}}</td>
                 <td class="request">{{request.method}} {{request.uri}}</td>
                 <td class="status">{{request.status}}</td>
                 <td class="time">{{request.time}}ms</td>

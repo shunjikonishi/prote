@@ -1,0 +1,42 @@
+{
+  "host" : "flt.backlog.jp",
+  "protocol" : "https",
+  "requestLine" : "POST /Login.action HTTP/1.1",
+  "headers" : [ {
+    "name" : "Accept",
+    "value" : "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+  }, {
+    "name" : "Accept-Encoding",
+    "value" : "gzip,deflate"
+  }, {
+    "name" : "Accept-Language",
+    "value" : "ja,en-US;q=0.8,en;q=0.6,sw;q=0.4"
+  }, {
+    "name" : "Cache-Control",
+    "value" : "max-age=0"
+  }, {
+    "name" : "Connection",
+    "value" : "keep-alive"
+  }, {
+    "name" : "Content-Length",
+    "value" : "86"
+  }, {
+    "name" : "Content-Type",
+    "value" : "application/x-www-form-urlencoded"
+  }, {
+    "name" : "Cookie",
+    "value" : "notifyTweet=0; PLAY_SESSION=\"08ca6b5049fe118e4bf05fbd76c6641c910858dc-sessionId=bccbbf55-d923-4b91-9a2d-0d0c203e703d\"; csm-hit=s-0XN2SKN232PZGMSQVVQN|1415800827451; dal=47505304;  JSESSIONID=16B17D9F4C38114AC08A50DCBEC11AF2-mc2.4"
+  }, {
+    "name" : "Host",
+    "value" : "flt.backlog.jp"
+  }, {
+    "name" : "Origin",
+    "value" : "https://flt.backlog.jp"
+  }, {
+    "name" : "Referer",
+    "value" : "https://flt.backlog.jp/LoginDisplay.action"
+  }, {
+    "name" : "User-Agent",
+    "value" : "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36"
+  } ]
+}

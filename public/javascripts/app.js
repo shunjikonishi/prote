@@ -162,7 +162,16 @@ var app = angular.module('App', ['bgDirectives'])
 		});
 	}
 	function test() {
-		console.log(selected.isResponseJson(), selected.responsePrettyPrint());
+		var ids = ["0", "1", "2", "3", "4"];
+		con.request({
+			"command": "test", 
+			"data" : {
+				"ids": ids
+			},
+			"success": function(data) {
+				location.href = "/" + $scope.contextPath + "/download/" + data;
+			}
+		});
 	}
 	var con = null,
 		list = [],
