@@ -18,3 +18,7 @@ dist
 /.settings
 *.sublime-workspace
 conf/generated.keystore
+test/*.request.headers
+test/*.request.body
+test/*.response.headers
+test/*.response.body
