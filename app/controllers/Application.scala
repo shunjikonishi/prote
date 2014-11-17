@@ -185,6 +185,7 @@ object Application extends Controller {
   }
 
   def download(id: String) = Action { implicit request =>
+println("download: " + id)
     StorageManager.getFile(id + ".js").map { file =>
       sendFile(file, "test.js")
     }.orElse {

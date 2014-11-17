@@ -1,6 +1,9 @@
 package models.testgen
 
+import play.api.mvc.BodyParsers
 import play.api.libs.json._
+import java.net.URLEncoder
+import java.net.URLDecoder
 import models.HttpMessage
 import models.RequestMessage
 import models.ResponseMessage
@@ -28,9 +31,20 @@ case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
     msg.body.map { f =>
       val data = FileUtils.readFile(f)
       val str = if (msg.isTextBody) new String(data, msg.charset) else Base64.encodeBase64String(data)
+println("body: " + str)
       msg.contentType match {
         case "application/x-www-form-urlencoded" =>
-          throw new IllegalStateException("Not implemented yet.")
+          val map = str.split("&").map {  kv =>
+            kv.split("=").toList match {
+              case key :: value :: Nil =>
+                (URLDecoder.decode(key, msg.charset), URLDecoder.decode(key, msg.charset))
+              case _ =>
+                throw new IllegalStateException(kv)
+            }
+          }.groupBy(t => t._1)
+          indent(JsObject(map.map { case (k, t) =>
+            (k, JsArray(t.map(t => JsString(t._2))))
+          }.toList), tab)
         case "application/json" => indent(Json.parse(str), tab)
         case _ => "\"" + escape(str) + "\""
       }

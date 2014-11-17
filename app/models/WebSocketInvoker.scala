@@ -41,10 +41,12 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
+println("test1: " + ids)
       val sm = new StorageManager(new File("test"), AppConfig.cookieName)
       val script = new MochaTestGenerator(sm).generate(desc, ids)
       val id = UUID.randomUUID.toString
       sm.saveToFile(id + ".js", script)
+println("test2: " + id)
       command.text(id)
     }
   }
