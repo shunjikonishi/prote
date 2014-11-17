@@ -28,7 +28,7 @@ case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
 
   private def body(msg: HttpMessage, tab: Int): String = {
     def escape(str: String): String = str.replaceAll("\"", "\\\"")
-    msg.body.map { f =>
+    msg.body.filter(_.length > 0).map { f =>
       val data = FileUtils.readFile(f)
       val str = if (msg.isTextBody) new String(data, msg.charset) else Base64.encodeBase64String(data)
 println("body: " + str)
