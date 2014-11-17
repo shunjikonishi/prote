@@ -19,7 +19,6 @@ class StorageManager(val dir: File, cookieName: String) {
 
   private def createFile(filename: String) = {
     val ret = new File(dir, filename)
-    ret.deleteOnExit
     ret
   }
 
@@ -63,7 +62,7 @@ class StorageManager(val dir: File, cookieName: String) {
     ResponseMessage(host, statusLine, headers, bodyFile)
   }
 
-  def createRequestMessage(host: HostInfo, request: Request[RawBuffer], id: String): RequestMessage = {
+  def createRequestMessage(host: HostInfo, request: Request[RawBuffer], id: String, deleteOnExit: Boolean = true): RequestMessage = {
     val requestLine = RequestLine(request.method, request.version, request.uri)
     val headers = request.headers.toMap.flatMap { case (k, v) =>
       if (k.equalsIgnoreCase("Host")) {
@@ -81,16 +80,18 @@ class StorageManager(val dir: File, cookieName: String) {
       val src = request.body.asFile
       val dest = createFile(id + ".request.body")
       src.renameTo(dest)
+      if (deleteOnExit) dest.deleteOnExit
       Some(dest)
     } else {
       None
     }
     val ret = RequestMessage(host, requestLine, headers, body)
-    ret.saveHeaders(createFile(id + ".request.headers"))
+    val headerFile = ret.saveHeaders(createFile(id + ".request.headers"))
+    if (deleteOnExit) headerFile.deleteOnExit
     ret
   }
 
-  def createResponseMessage(host: HostInfo, request: RequestHeader, response: Response, id: String): ResponseMessage = {
+  def createResponseMessage(host: HostInfo, request: RequestHeader, response: Response, id: String, deleteOnExit: Boolean = true): ResponseMessage = {
     val statusLine = StatusLine(response.getStatusCode, request.version, Option(response.getStatusText))
     val headers = mapAsScalaMapConverter(response.getHeaders).asScala.flatMap { case (k, v) =>
       v.map(HttpHeader(k, _))
@@ -113,12 +114,14 @@ class StorageManager(val dir: File, cookieName: String) {
       } finally {
         is.close
       }
+      if (deleteOnExit) bodyFile.deleteOnExit
       Some(bodyFile)
     } else {
       None
     }
     val ret = ResponseMessage(host, statusLine, headers, body)
-    ret.saveHeaders(createFile(id + ".response.headers"))
+    val headerFile = ret.saveHeaders(createFile(id + ".response.headers"))
+    if (deleteOnExit) headerFile.deleteOnExit
     ret
   }
 

@@ -5,7 +5,7 @@ import play.api.libs.json._
 import java.io.File
 import jp.co.flect.io.FileUtils
 
-abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[HttpHeader], body: Option[File]) {
+abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers: Seq[HttpHeader], val body: Option[File]) {
   def isRequest: Boolean
   def isResponse = !isRequest
 
@@ -33,7 +33,14 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
 
   def contentType = getHeader("Content-Type").map(_.takeWhile(_ != ';')).getOrElse("application/octet-stream")
 
-  lazy val headersToMap: Map[String, String] = {
+  def charset = {
+    getHeader("Content-Type")
+      .flatMap(_.split(";").find(_.toLowerCase.startsWith("charset=")))
+      .map(_.split("=")(1))
+      .getOrElse("utf-8")
+  }
+
+  def headersToMap: Map[String, String] = {
     val (cookies, others) = headers.partition(_.name.toLowerCase == "set-cookie")
     val map = others.map { h =>
       (h.name, h.value)
@@ -44,6 +51,10 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
       map
     }
   }
+
+  def headersToJson = JsObject(headers.map { h =>
+    (h.name, JsString(h.value))
+  })
 
   def toJson = {
     val initialLineKey = if (isRequest) "requestLine" else "statusLine"
@@ -57,9 +68,10 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
       ))))
     ))
   }
-  def saveHeaders(file: File) = {
+  def saveHeaders(file: File): File = {
     val str = Json.prettyPrint(toJson)
     FileUtils.writeFile(file, str, "utf-8")
+    file
   }
 
   def kind = {
@@ -105,7 +117,7 @@ abstract class HttpMessage(host: HostInfo, initialLine: String, headers: Seq[Htt
   }
 }
 
-case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq[HttpHeader], body: Option[File])
+case class RequestMessage(override val host: HostInfo, requestLine: RequestLine, override val headers: Seq[HttpHeader], override val body: Option[File])
   extends HttpMessage(host, requestLine.toString, headers, body) 
 {
   val isRequest = true
@@ -144,7 +156,7 @@ object RequestMessage {
   }
 }
 
-case class ResponseMessage(host: HostInfo, statusLine: StatusLine, headers: Seq[HttpHeader], body: Option[File])
+case class ResponseMessage(override val host: HostInfo, statusLine: StatusLine, override val headers: Seq[HttpHeader], override val body: Option[File])
   extends HttpMessage(host, statusLine.toString, headers, body) 
 {
   val isRequest = false

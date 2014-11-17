@@ -1,11 +1,37 @@
 @(desc: String, messages: Seq[models.testgen.MessageWrapper])
 var http = require("http"),
 	https = require("https"),
-	assert = require("chai").assert;
+	assert = require("chai").assert,
+	$ = require("jquery");
 
 describe("desc", function() {
+	function buildBody(contentType, params) {
+		var ret = "";
+		switch(contentType) {
+			case "application/x-www-form-urlencoded":
+				$.each(params, function(key, value) {
+					//Key and value are already escaped
+					if ($.isArray(value)) {
+						for (var i=0; i<value.length; i++) {
+							if (ret.length > 0) ret += "&";
+							ret += key + "=" + value[i];
+						}
+					} else {
+						if (ret.length > 0) ret += "&";
+						ret += key + "=" + value;
+					}
+				});
+				break;
+			case "application/json":
+				ret = JSON.stringify(params);
+				break;
+			default:
+				ret = params;
+		}
+		return ret;
+	}
 @messages.map { msg =>
-	it("msg.path", function(done) {
+	it("@msg.path", function(done) {
 		function validateResponse(body) {
 			//ToDo
 		}

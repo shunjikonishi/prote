@@ -162,7 +162,10 @@ var app = angular.module('App', ['bgDirectives'])
 		});
 	}
 	function test() {
-		var ids = ["0", "1", "2", "3", "4"];
+		var ids = [];
+		for (var i=0; i<=22; i++) {
+			ids.push("" + i);
+		}
 		con.request({
 			"command": "test", 
 			"data" : {
