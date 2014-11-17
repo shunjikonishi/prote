@@ -163,7 +163,7 @@ var app = angular.module('App', ['bgDirectives'])
 	}
 	function test() {
 		var ids = [];
-		for (var i=0; i<=22; i++) {
+		for (var i=0; i<=18; i++) {
 			ids.push("" + i);
 		}
 		con.request({

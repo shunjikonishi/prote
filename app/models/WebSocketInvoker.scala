@@ -5,6 +5,7 @@ import play.api.libs.json._
 import java.util.UUID
 import java.io.File
 import models.testgen.MochaTestGenerator
+import models.testgen.MessageWrapper
 
 class WebSocketInvoker(sessionId: String) extends CommandInvoker {
 
@@ -30,6 +31,13 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
+      val sm = StorageManager
+      val messages = ids.map(id => MessageWrapper(sm.getRequestMessage(id), sm.getResponseMessage(id)))
+      val dir = new java.io.File("test")
+      messages.zipWithIndex.foreach { case(msg, idx) =>
+        msg.request.copyTo(dir, idx.toString)
+        msg.response.copyTo(dir, idx.toString)
+      }
       val script = MochaTestGenerator.generate(desc, ids)
       val id = UUID.randomUUID.toString
       StorageManager.saveToFile(id + ".js", script)
@@ -41,12 +49,10 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
-println("test1: " + ids)
       val sm = new StorageManager(new File("test"), AppConfig.cookieName)
       val script = new MochaTestGenerator(sm).generate(desc, ids)
       val id = UUID.randomUUID.toString
       sm.saveToFile(id + ".js", script)
-println("test2: " + id)
       command.text(id)
     }
   }

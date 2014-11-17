@@ -31,24 +31,25 @@ case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
     msg.body.filter(_.length > 0).map { f =>
       val data = FileUtils.readFile(f)
       val str = if (msg.isTextBody) new String(data, msg.charset) else Base64.encodeBase64String(data)
-println("body: " + str)
       msg.contentType match {
         case "application/x-www-form-urlencoded" =>
           val map = str.split("&").map {  kv =>
             kv.split("=").toList match {
+              case key :: Nil =>
+                (URLDecoder.decode(key, msg.charset), "")
               case key :: value :: Nil =>
-                (URLDecoder.decode(key, msg.charset), URLDecoder.decode(key, msg.charset))
+                (URLDecoder.decode(key, msg.charset), URLDecoder.decode(value, msg.charset))
               case _ =>
                 throw new IllegalStateException(kv)
             }
           }.groupBy(t => t._1)
           indent(JsObject(map.map { case (k, t) =>
-            (k, JsArray(t.map(t => JsString(t._2))))
+            (k, if (t.size > 1) JsArray(t.map(t => JsString(t._2))) else JsString(t.head._2))
           }.toList), tab)
         case "application/json" => indent(Json.parse(str), tab)
         case _ => "\"" + escape(str) + "\""
       }
-    }.getOrElse("")
+    }.getOrElse("\"\"")
   }
 
   def requestHeaders(tab: Int) = {
