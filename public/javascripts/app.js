@@ -69,6 +69,7 @@ var app = angular.module('App', ['bgDirectives'])
 			if (list.length > LIST_MAX) {
 				list.shift();
 			}
+			data.select = false;
 			list.push(data);
 			setTimeout(function() {
 				var mainDiv = $("#main")[0];
@@ -149,8 +150,14 @@ var app = angular.module('App', ['bgDirectives'])
 	function generateTest() {
 		var ids = [];
 		$.each($filter("filter")(list, filterRow), function(idx, value) {
-			ids.push(value.id);
+			if (value.select) {
+				ids.push(value.id);
+			}
 		});
+		if (ids.length === 0) {
+			alert("Select rows to generate test.");
+			return;
+		}
 		con.request({
 			"command": "generateTest", 
 			"data" : {
@@ -159,6 +166,12 @@ var app = angular.module('App', ['bgDirectives'])
 			"success": function(data) {
 				location.href = "/" + $scope.contextPath + "/download/" + data;
 			}
+		});
+	}
+	function selectAll($event) {
+		var checked = $event.target.checked;
+		$.each($filter("filter")(list, filterRow), function(idx, value) {
+			value.select = checked;
 		});
 	}
 	function test() {
@@ -199,6 +212,7 @@ var app = angular.module('App', ['bgDirectives'])
 		"showResponse": showResponse,
 		"clear": clear,
 		"generateTest": generateTest,
+		"selectAll": selectAll,
 		"test": test,
 		"requestMessage": null,
 		"responseMessage": null

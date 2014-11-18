@@ -115,6 +115,9 @@
   cursor: pointer;
 }
 
+.main table .sel {
+  width: 40px;
+}
 .main table .kind {
   width: 80px;
 }
