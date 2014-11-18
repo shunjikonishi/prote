@@ -162,8 +162,12 @@ var app = angular.module('App', ['bgDirectives'])
 		});
 	}
 	function test() {
+		var max = prompt("Input max request No.", "");
+		if (!max) {
+			return;
+		}
 		var ids = [];
-		for (var i=0; i<=18; i++) {
+		for (var i=0; i<=parseInt(max, 10); i++) {
 			ids.push("" + i);
 		}
 		con.request({

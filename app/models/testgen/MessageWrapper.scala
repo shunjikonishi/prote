@@ -12,14 +12,6 @@ import jp.co.flect.io.FileUtils
 
 case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
 
-  def path = request.requestLine.path
-  def host = request.host.name
-  def protocol = request.host.protocol
-  def method = request.requestLine.method
-
-  def hasRequestBody = request.body.isDefined
-  def requestContentType = request.contentType
-
   private def indent(json: JsValue, tab: Int): String = {
     val prefix = "\t" * tab
     val str = Json.prettyPrint(json)
@@ -52,11 +44,24 @@ case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
     }.getOrElse("\"\"")
   }
 
-  def requestHeaders(tab: Int) = {
-    indent(request.headersToJson, tab)
-  }
+  def uri = request.requestLine.uri
+  def path = request.requestLine.path
+  def host = request.host.name
+  def protocol = request.host.protocol
+  def method = request.requestLine.method
 
-  def requestBody(tab: Int): String = body(request, tab)
+  def hasRequestBody = request.body.isDefined
+  def requestContentType = request.contentType
+
+  def requestHeaders(tab: Int) = indent(request.headersToJson, tab)
+  def requestBody(tab: Int) = body(request, tab)
 
   def statusCode = response.statusLine.code
+
+  def hasResponseBody = response.body.isDefined
+  def responseContentType = response.contentType
+
+  def responseHeaders(tab: Int) = indent(response.headersToJson, tab)
+  def responseBody(tab: Int) = body(response, tab)
+  
 }

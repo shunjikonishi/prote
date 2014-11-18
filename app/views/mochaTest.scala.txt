@@ -3,6 +3,7 @@ var http = require("http"),
 	https = require("https"),
 	assert = require("chai").assert,
 	querystring = require("querystring");
+var IGNORE_KEYS = [];
 
 describe("@desc", function() {
 	this.timeout(10000);
@@ -31,26 +32,45 @@ describe("@desc", function() {
 		}
 		return ret;
 	}
+	function compareJson(actual, expected, prefix) {
+		if (!prefix) {
+			prefix = "";
+		}
+		for (var key in expected) {
+			if (IGNORE_KEYS.indexOf(key) !== -1) {
+				continue;
+			}
+			var v1 = expected[key],
+				v2 = actual[key];
+			if (typeof(v1) === "object" && typeof(v2) === "object") {
+				compareJson(v2, v1, prefix + key + ".");
+			} else {
+				assert.equal(v2, v1, "Not equal - " + prefix + key + ": " + v2 + ", " + v1);
+			}
+		}
+	}
 @messages.map { msg =>
 	it("@msg.path", function(done) {
 		function validateResponse(res, body) {
-			//ToDo
-			console.log(JSON.stringify(res.headers));
+@if(msg.responseContentType == "application/json") {
+			compareJson(JSON.parse(body), @msg.responseBody(3));
+}
 		}
 		var params = {
 			"hostname": "@msg.host",
 			"method": "@msg.method",
-			"path": "@msg.path",
+			"path": "@msg.uri",
 			"headers": @msg.requestHeaders(3)
 		};
 @if(msg.hasRequestBody) {
 		var requestData = buildBody("@msg.requestContentType", @msg.requestBody(3));
-		params.headers["Content-Length"] = requestData.length;
+		params.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
 }
 		var con = @msg.protocol,
 			req = con.request(params, function(res) {
 				assert.equal(res.statusCode, @msg.statusCode);
 				var body = "";
+				res.setEncoding("utf-8");
 				res.on("data", function(data) { body += data;});
 				res.on("end", function() { 
 					validateResponse(res, body);
