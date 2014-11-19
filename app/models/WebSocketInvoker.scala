@@ -27,21 +27,23 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       command.text(msg.toString(prettyPrint))
     }
     addHandler("generateTest") { command =>
-      val name = (command.data \ "name").asOpt[String].getOrElse("test")
-      val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
+      val name = (command.data \ "filename").asOpt[String].getOrElse("test")
+      val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
+      val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
       val ids = (command.data \ "ids") match {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
-      val id = TestGenerator("mocha").generate(name, desc, ids)
+      val id = TestGenerator(kind).generate(name, desc, ids)
       command.text(id)
     }
     addHandler("regenerateTest") { command =>
       val id = (command.data \ "id").as[String]
-      val name = (command.data \ "name").asOpt[String].getOrElse("test")
-      val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
+      val name = (command.data \ "filename").asOpt[String].getOrElse("test")
+      val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
+      val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
 
-      TestGenerator.regenerator(id, "mocha").map { gen =>
+      TestGenerator.regenerator(id, kind).map { gen =>
         val maxId = new File(TestGenerator.baseDir, id)
           .listFiles
           .filter(_.getName.endsWith(".request.headers"))

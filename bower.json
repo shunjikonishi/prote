@@ -19,6 +19,7 @@
   "dependencies": {
     "angular": "~1.2.26",
     "bg-splitter": "*",
-    "roomframework": "~0.1.1"
+    "roomframework": "~0.1.1",
+    "angular-bootstrap": "~0.12.0"
   }
 }

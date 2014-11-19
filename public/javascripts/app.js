@@ -1,5 +1,5 @@
-var app = angular.module('App', ['bgDirectives'])
-	.controller("MainController", function($scope, $filter) 
+var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
+	.controller("MainController", function($scope, $filter, $modal) 
 {
 	var LIST_MAX = 1000,
 		MessageKind = (function() {
@@ -160,32 +160,47 @@ var app = angular.module('App', ['bgDirectives'])
 			alert("Select rows to generate test.");
 			return;
 		}
-		con.request({
-			"command": "generateTest", 
-			"data" : {
-				"ids": ids
-			},
-			"success": function(data) {
-				download(data);
+		generateOption.title = "Generate test";
+		generateOption.regenerate = false;
+		generateOption.ids = ids;
+		$modal.open({
+			templateUrl: "generate-option",
+			scope: $scope,
+			backdrop: "static"
+		}).result.then(function(result) {
+			if (result == "ok") {
+				con.request({
+					"command": "generateTest", 
+					"data" : generateOption,
+					"success": function(data) {
+						generateOption.id = data;
+						download(data);
+					}
+				});
 			}
 		});
 	}
 	function regenerateTest() {
-		var id = prompt("Input test id.", "");
-		if (!id) {
-			return;
-		}
-		con.request({
-			"command": "regenerateTest", 
-			"data" : {
-				"id": id
-			},
-			"success": function(data) {
-				if (data.error) {
-					alert(data.error);
-				} else {
-					download(id);
-				}
+		generateOption.title = "Regenerate test";
+		generateOption.regenerate = true;
+		generateOption.ids = null;
+		$modal.open({
+			templateUrl: "generate-option",
+			scope: $scope,
+			backdrop: "static"
+		}).result.then(function(result) {
+			if (result == "ok") {
+				con.request({
+					"command": "regenerateTest", 
+					"data" : generateOption,
+					"success": function(data) {
+						if (data.error) {
+							alert(data.error);
+						} else {
+							download(generateOption.id);
+						}
+					}
+				});
 			}
 		});
 	}
@@ -199,27 +214,15 @@ var app = angular.module('App', ['bgDirectives'])
 		});
 	}
 	function test() {
-		var max = prompt("Input max request No.", "");
-		if (!max) {
-			return;
-		}
-		var ids = [];
-		for (var i=0; i<=parseInt(max, 10); i++) {
-			ids.push("" + i);
-		}
-		con.request({
-			"command": "test", 
-			"data" : {
-				"ids": ids
-			},
-			"success": function(data) {
-				location.href = "/" + $scope.contextPath + "/download/" + data;
-			}
-		});
 	}
 	var con = null,
 		list = [],
 		selected = new SelectedRequest(),
+		generateOption = {
+			filename: "test",
+			description: "Auto generate test",
+			kind: "mocha"
+		},
 		filters = {
 			"image": false,
 			"script": false,
@@ -237,6 +240,7 @@ var app = angular.module('App', ['bgDirectives'])
 		"showRequest": showRequest,
 		"showResponse": showResponse,
 		"clear": clear,
+		"generateOption": generateOption,
 		"generateTest": generateTest,
 		"regenerateTest": regenerateTest,
 		"selectAll": selectAll,

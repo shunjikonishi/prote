@@ -6,7 +6,9 @@
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="assets/stylesheets/main.css" />
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
   <script src="assets/javascripts/ext/angular.min.js"></script>
+  <script src="assets/javascripts/ext/ui-bootstrap-tpls.min.js"></script>
   <script src="assets/javascripts/ext/splitter.js"></script>
   <script src="assets/javascripts/ext/roomframework.js"></script>
   <script src="assets/javascripts/app.js"></script>
@@ -128,5 +130,36 @@
       <input type="hidden" name="ids" ng-repeat="request in list | filter:filterRow" value="{{request.id}}">
     </form>
   </div>
+  <script type="text/ng-template" id="generate-option">
+    <div class="modal-header">
+        <h3 class="modal-title">{{generateOption.title}}</h3>
+    </div>
+    <div class="modal-body">
+      <form role="form">
+        <div class="form-group" ng-show="generateOption.regenerate">
+          <label for="generate-option-id">Regenerate id</label>
+          <input type="text" class="form-control" id="generate-option-id" ng-model="generateOption.id">
+        </div>
+        <div class="form-group">
+          <label for="generate-option-filename">Filename</label>
+          <input type="text" class="form-control" id="generate-option-filename" ng-model="generateOption.filename">
+        </div>
+        <div class="form-group">
+          <label for="generate-option-description">Description</label>
+          <input type="text" class="form-control" id="generate-option-description" ng-model="generateOption.description">
+        </div>
+        <div class="form-group">
+          <label for="generate-option-kind">Kind</label>
+          <select class="form-control" id="generate-option-kind" ng-model="generateOption.kind">
+            <option value="mocha">JavaScript(Mocha)</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-primary" ng-click="$close('ok')">OK</button>
+        <button class="btn btn-warning" ng-click="$close('cancel')">Cancel</button>
+    </div>
+  </script>
 </body>
 </html>

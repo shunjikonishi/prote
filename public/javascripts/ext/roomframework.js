@@ -263,7 +263,7 @@ $(function() {
 			retryCount = 0,
 			sendNoopHandle = 0,
 			socket = createWebSocket();
-		$(window).on("beforeunload", close);
+//		$(window).on("beforeunload", close);
 		$(document).on(visibilityChangeProp, function() {
 			var bVisible = isDocumentVisible();
 			logger.log(visibilityChangeProp, "visible=" + bVisible);
