@@ -1,5 +1,6 @@
 logs
 proxy_logs
+test_logs
 node_modules
 bower_components
 project/project

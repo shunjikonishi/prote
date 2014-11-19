@@ -211,10 +211,6 @@ object StatusLine {
   }
 }
 
-case class HttpHeader(name: String, value: String) {
-  override def toString = s"$name: $value"
-}
-
 sealed abstract class MessageKind(name: String) {
   override def toString = name
 }

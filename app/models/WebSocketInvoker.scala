@@ -4,6 +4,7 @@ import roomframework.command._
 import play.api.libs.json._
 import java.util.UUID
 import java.io.File
+import models.testgen.TestGenerator
 import models.testgen.MochaTestGenerator
 import models.testgen.MessageWrapper
 
@@ -38,7 +39,7 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
         msg.request.copyTo(dir, idx.toString)
         msg.response.copyTo(dir, idx.toString)
       }
-      val script = MochaTestGenerator.generate(desc, ids)
+      val script = TestGenerator("mocha").generate(desc, ids)
       val id = UUID.randomUUID.toString
       StorageManager.saveToFile(id + ".js", script)
       command.text(id)
@@ -50,7 +51,7 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
         case _ => throw new IllegalArgumentException()
       }
       val sm = new StorageManager(new File("test"), AppConfig.cookieName)
-      val script = new MochaTestGenerator(sm).generate(desc, ids)
+      val script = (new TestGenerator(new File("test_logs"), sm) with MochaTestGenerator).generate(desc, ids)
       val id = UUID.randomUUID.toString
       sm.saveToFile(id + ".js", script)
       command.text(id)

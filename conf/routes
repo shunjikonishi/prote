@@ -5,7 +5,6 @@
 # Console
 GET     /CONSOLE/main                    controllers.Application.main
 GET     /CONSOLE/ws                      controllers.Application.ws
-POST    /CONSOLE/test.js                 controllers.Application.generateTest
 GET     /CONSOLE/download/:id            controllers.Application.download(id: String)
 GET     /CONSOLE/assets/*file            controllers.Assets.at(path="/public", file)
 

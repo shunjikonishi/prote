@@ -26,7 +26,6 @@ import models.StorageManager
 import models.WebSocketManager
 import models.CacheManager
 import models.HostInfo
-import models.testgen.MochaTestGenerator
 import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
@@ -169,23 +168,7 @@ object Application extends Controller {
     (h.in, h.out)
   }
 
-  def generateTest = Action { implicit request =>
-    Form(tuple(
-      "desc" -> optional(text),
-      "ids" -> list(text)
-    )).bindFromRequest.fold(
-      hasErrors={ form => 
-        println("Invalid Request: " + form)
-        throw new IllegalStateException()
-      },
-      success={ case (desc, ids) =>
-        Ok(MochaTestGenerator.generate(desc.getOrElse("Auto generate test"), ids)).as("application/octet-stream")
-      }
-    )
-  }
-
   def download(id: String) = Action { implicit request =>
-println("download: " + id)
     StorageManager.getFile(id + ".js").map { file =>
       sendFile(file, "test.js")
     }.orElse {
