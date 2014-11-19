@@ -41,9 +41,10 @@ case class MessageWrapper(request: RequestMessage, response: ResponseMessage) {
         case "application/json" => indent(Json.parse(str), tab)
         case _ => "\"" + escape(str) + "\""
       }
-    }.getOrElse("\"\"")
+    }.getOrElse("null")
   }
 
+  def ssl = request.host.ssl
   def uri = request.requestLine.uri
   def path = request.requestLine.path
   def host = request.host.name

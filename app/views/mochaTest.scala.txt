@@ -1,14 +1,18 @@
 @(desc: String, messages: Seq[models.testgen.MessageWrapper])
 var http = require("http"),
 	https = require("https"),
-	cookie = require("cookie"),
 	assert = require("chai").assert,
 	querystring = require("querystring");
 var IGNORE_KEYS = [],
-	IGNORE_VALUE = "__IGNORE__",
-	prevCookie = null;
+	IGNORE_VALUE = "__IGNORE__";
 
+function interceptor(prevResponse, requestParams, requestBody) {
+	//Add customization.
+}
 function buildBody(contentType, params) {
+	if (!params) {
+		return null;
+	}
 	var ret = "";
 	switch(contentType) {
 		case "application/x-www-form-urlencoded":
@@ -50,55 +54,97 @@ function compareJson(actual, expected, prefix) {
 		}
 	}
 }
-function getNextCookie() {
-	if (!prevCookie) {
-		return null;
+function Cookies() {
+	function Cookie(name, value) {
+		this.name = name;
+		this.value = value;
+		this.expires = null;
+		this.maxAge = 0;
+		this.domain = null;
+		this.path = "/";
+		this.secure = false;
+		this.httpOnly = false;
 	}
-	var ret = "";
-	for (var key in prevCookie) {
-		if (key == "PLAY_SESSION") {
-			ret += key + "=\"" + prevCookie[key] + "\"; ";
-		} else {
-			ret += cookie.serialize(key, prevCookie[key]) + "; ";
+	function parseNameValuePair(str) {
+		var idx = str.indexOf("=");
+		if (idx == -1) {
+			return null;
+		}
+		return new Cookie(str.substring(0, idx).trim(), str.substring(idx+1));
+	}
+	function parseSetCookie(str) {
+		var strs = str.split(";"),
+			cookie = parseNameValuePair(strs[0]);
+		if (!cookie) {
+			return null;
+		}
+		for (var i=1; i<strs.length; i++) {
+			var value = strs[i].trim();
+			if (value == "Secure") {
+				cookie.secure = true;
+			} else if (value == "HttpOnly") {
+				cookie.httpOnly = true;
+			} else if (value.indexOf("Expires=") == 0) {
+				cookie.expires = value.split("=")[1];
+			} else if (value.indexOf("Max-Age=") == 0) {
+				cookie.maxAge = parseInt(value.split("=")[1], 10);
+			} else if (value.indexOf("Domain=") == 0) {
+				cookie.domain = value.split("=")[1];
+			} else if (value.indexOf("Path=") == 0) {
+				cookie.path = value.split("=")[1];
+			}
+		}
+		return cookie;
+	}
+	function addSetCookie(cookies) {
+		if (!cookies || cookies.length == 0) {
+			return;
+		}
+		if (!Array.isArray(cookies)) {
+			cookies = [cookies];
+		}
+		for (var i=0; i<cookies.length; i++) {
+			var cookie = parseSetCookie(cookies[i]);
+			if (cookie) {
+				values[cookie.name] = cookie;
+			}
 		}
 	}
-	return ret;
-}
-function setNextCookie(cookies) {
-	if (!cookies || cookies.length == 0) {
-		return;
+	function addCookie(str) {
+		var strs = str.split(";");
+		for (var i=1; i<strs.length; i++) {
+			var cookie = parseNameValuePair(strs[i].trim());
+			if (cookie && !values[cookie.name]) {
+				values[cookie.name] = cookie;
+			}
+		}
 	}
-	if (!prevCookie) {
-		prevCookie = {};
-	}
-	if (!Array.isArray(cookies)) {
-		var temp = [];
-		temp.push(cookies);
-		cookies = temp;
-	}
-	for (var i=0; i<cookies.length; i++) {
-		var obj = cookie.parse(cookies[i]);
-		for (var key in obj) {
-			var lowerKey = key.toLowerCase();
-			if (lowerKey == "path" || 
-				lowerKey == "maxage" || 
-				lowerKey == "expires" || 
-				lowerKey == "secure" || 
-				lowerKey == "httponly" || 
-				lowerKey == "domain"
-			) {
+	function getCookie(path, ssl) {
+		var ret = "";
+		for (var key in values) {
+			var cookie = values[key];
+			if (!ssl && cookie.secure) {
 				continue;
 			}
-			prevCookie[key] = obj[key];
+			if (path.indexOf(cookie.path) != 0) {
+				continue;
+			}
+			ret += cookie.name + "=" + cookie.value + "; ";
 		}
+		return ret;
 	}
+	var values = {};
+	this.addCookie = addCookie;
+	this.addSetCookie = addSetCookie;
+	this.getCookie = getCookie;
 }
 /**********************************************
  * Generated test
  *********************************************/
 describe("@desc", function() {
 	this.timeout(10000);
-	var prevResponse = null;
+	var cookies = new Cookies(),
+		prevResponse = null;
 @messages.map { msg =>
 	//@msg.uri
 	it("@msg.uri", function(done) {
@@ -109,35 +155,41 @@ describe("@desc", function() {
 }
 			return body;
 		}
-		var params = {
-			"hostname": "@msg.host",
-			"method": "@msg.method",
-			"path": "@msg.uri",
-			"headers": @msg.requestHeaders(3)
-		};
-		if (prevCookie) {
-			params.headers["Cookie"] = getNextCookie();
-		}
-@if(msg.hasRequestBody) {
-		var requestData = buildBody("@msg.requestContentType", @msg.requestBody(3));
-		params.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
-}
 		var con = @msg.protocol,
-			req = con.request(params, function(res) {
+			requestData = @msg.requestBody(3),
+			params = {
+				"hostname": "@msg.host",
+				"method": "@msg.method",
+				"path": "@msg.uri",
+				"headers": @msg.requestHeaders(4)
+			};
+
+		//Calc cookie
+		cookies.addCookie(params.headers["Cookie"]);
+		var cookie = cookies.getCookie(params.path, con === https);
+		if (cookie) {
+			params.headers["Cookie"] = cookie;
+		}
+		interceptor(prevResponse, params, requestData);
+		requestData = buildBody("@msg.requestContentType", requestData);
+		if (requestData) {
+			params.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
+		}
+		var req = con.request(params, function(res) {
 				assert.equal(res.statusCode, @msg.statusCode);
 				var body = "";
 				res.setEncoding("utf-8");
 				res.on("data", function(data) { body += data;});
 				res.on("end", function() { 
-					setNextCookie(res.headers["set-cookie"]);
+					cookies.addSetCookie(res.headers["set-cookie"]);
 					res.body = validateResponse(res, body);
 					prevResponse = res;
 					done();
 				});
 			});
-@if(msg.hasRequestBody) {
-		req.write(requestData);
-}
+		if (requestData) {
+			req.write(requestData);
+		}
 		req.end();
 	});
 }	

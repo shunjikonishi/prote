@@ -160,7 +160,9 @@ object Application extends Controller {
   def main = Action { implicit request =>
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
     val contextPath = AppConfig.consoleContext
-    Ok(views.html.main(sessionId, contextPath)).withCookies(Cookie(AppConfig.cookieName, sessionId))
+    Ok(views.html.main(sessionId, contextPath)).withCookies(
+      Cookie(AppConfig.cookieName, sessionId)
+    )
   }
 
   def ws = WebSocket.using[String] { implicit request =>
