@@ -27,34 +27,34 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       command.text(msg.toString(prettyPrint))
     }
     addHandler("generateTest") { command =>
+      val name = (command.data \ "name").asOpt[String].getOrElse("test")
       val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
       val ids = (command.data \ "ids") match {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
-      val sm = StorageManager
-      val messages = ids.map(id => MessageWrapper(sm.getRequestMessage(id), sm.getResponseMessage(id)))
-      val dir = new java.io.File("test")
-      messages.zipWithIndex.foreach { case(msg, idx) =>
-        msg.request.copyTo(dir, idx.toString)
-        msg.response.copyTo(dir, idx.toString)
-      }
-      val script = TestGenerator("mocha").generate(desc, ids)
-      val id = UUID.randomUUID.toString
-      StorageManager.saveToFile(id + ".js", script)
+      val id = TestGenerator("mocha").generate(name, desc, ids)
       command.text(id)
     }
-    addHandler("test") { command =>
+    addHandler("regenerateTest") { command =>
+      val id = (command.data \ "id").as[String]
+      val name = (command.data \ "name").asOpt[String].getOrElse("test")
       val desc = (command.data \ "desc").asOpt[String].getOrElse("Auto generated test")
-      val ids = (command.data \ "ids") match {
-        case JsArray(seq) => seq.map(_.as[String])
-        case _ => throw new IllegalArgumentException()
+
+      TestGenerator.regenerator(id, "mocha").map { gen =>
+        val maxId = new File(TestGenerator.baseDir, id)
+          .listFiles
+          .filter(_.getName.endsWith(".request.headers"))
+          .map(_.getName.takeWhile(_ != '.').toInt)
+          .max
+        val ids = List.range(1, maxId + 1).map(_.toString)
+        gen.generate(id, name, desc, ids)
+        command.text(id)
+      }.getOrElse {
+        command.json(JsObject(Seq(
+          "error" -> JsString("Not found")
+        )))
       }
-      val sm = new StorageManager(new File("test"), AppConfig.cookieName)
-      val script = (new TestGenerator(new File("test_logs"), sm) with MochaTestGenerator).generate(desc, ids)
-      val id = UUID.randomUUID.toString
-      sm.saveToFile(id + ".js", script)
-      command.text(id)
     }
   }
 

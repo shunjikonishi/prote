@@ -1,60 +1,113 @@
 @(desc: String, messages: Seq[models.testgen.MessageWrapper])
 var http = require("http"),
 	https = require("https"),
+	cookie = require("cookie"),
 	assert = require("chai").assert,
 	querystring = require("querystring");
-var IGNORE_KEYS = [];
+var IGNORE_KEYS = [],
+	IGNORE_VALUE = "__IGNORE__",
+	prevCookie = null;
 
-describe("@desc", function() {
-	this.timeout(10000);
-	function buildBody(contentType, params) {
-		var ret = "";
-		switch(contentType) {
-			case "application/x-www-form-urlencoded":
-				for (var key in params) {
-					var value = params[key];
-					if (Array.isArray(value)) {
-						for (var i=0; i<value.length; i++) {
-							if (ret.length > 0) ret += "&";
-							ret += querystring.escape(key) + "=" + querystring.escape(value[i]);
-						}
-					} else {
+function buildBody(contentType, params) {
+	var ret = "";
+	switch(contentType) {
+		case "application/x-www-form-urlencoded":
+			for (var key in params) {
+				var value = params[key];
+				if (Array.isArray(value)) {
+					for (var i=0; i<value.length; i++) {
 						if (ret.length > 0) ret += "&";
-						ret += querystring.escape(key) + "=" + querystring.escape(value);
+						ret += querystring.escape(key) + "=" + querystring.escape(value[i]);
 					}
-				};
-				break;
-			case "application/json":
-				ret = JSON.stringify(params);
-				break;
-			default:
-				ret = params;
-		}
-		return ret;
+				} else {
+					if (ret.length > 0) ret += "&";
+					ret += querystring.escape(key) + "=" + querystring.escape(value);
+				}
+			};
+			break;
+		case "application/json":
+			ret = JSON.stringify(params);
+			break;
+		default:
+			ret = params;
 	}
-	function compareJson(actual, expected, prefix) {
-		if (!prefix) {
-			prefix = "";
+	return ret;
+}
+function compareJson(actual, expected, prefix) {
+	if (!prefix) {
+		prefix = "";
+	}
+	for (var key in expected) {
+		if (IGNORE_KEYS.indexOf(key) !== -1) {
+			continue;
 		}
-		for (var key in expected) {
-			if (IGNORE_KEYS.indexOf(key) !== -1) {
+		var v1 = expected[key],
+			v2 = actual[key];
+		if (typeof(v1) === "object" && typeof(v2) === "object") {
+			compareJson(v2, v1, prefix + key + ".");
+		} else if (v1 !== IGNORE_VALUE) {
+			assert.equal(v2, v1, "Not equal - " + prefix + key + ": ");
+		}
+	}
+}
+function getNextCookie() {
+	if (!prevCookie) {
+		return null;
+	}
+	var ret = "";
+	for (var key in prevCookie) {
+		if (key == "PLAY_SESSION") {
+			ret += key + "=\"" + prevCookie[key] + "\"; ";
+		} else {
+			ret += cookie.serialize(key, prevCookie[key]) + "; ";
+		}
+	}
+	return ret;
+}
+function setNextCookie(cookies) {
+	if (!cookies || cookies.length == 0) {
+		return;
+	}
+	if (!prevCookie) {
+		prevCookie = {};
+	}
+	if (!Array.isArray(cookies)) {
+		var temp = [];
+		temp.push(cookies);
+		cookies = temp;
+	}
+	for (var i=0; i<cookies.length; i++) {
+		var obj = cookie.parse(cookies[i]);
+		for (var key in obj) {
+			var lowerKey = key.toLowerCase();
+			if (lowerKey == "path" || 
+				lowerKey == "maxage" || 
+				lowerKey == "expires" || 
+				lowerKey == "secure" || 
+				lowerKey == "httponly" || 
+				lowerKey == "domain"
+			) {
 				continue;
 			}
-			var v1 = expected[key],
-				v2 = actual[key];
-			if (typeof(v1) === "object" && typeof(v2) === "object") {
-				compareJson(v2, v1, prefix + key + ".");
-			} else {
-				assert.equal(v2, v1, "Not equal - " + prefix + key + ": " + v2 + ", " + v1);
-			}
+			prevCookie[key] = obj[key];
 		}
 	}
+}
+/**********************************************
+ * Generated test
+ *********************************************/
+describe("@desc", function() {
+	this.timeout(10000);
+	var prevResponse = null;
 @messages.map { msg =>
-	it("@msg.path", function(done) {
+	//@msg.uri
+	it("@msg.uri", function(done) {
 		function validateResponse(res, body) {
 @if(msg.responseContentType == "application/json") {
-			compareJson(JSON.parse(body), @msg.responseBody(3));
+			body = JSON.parse(body);
+			compareJson(body, @msg.responseBody(3));
 }
+			return body;
 		}
 		var params = {
 			"hostname": "@msg.host",
@@ -62,6 +115,9 @@ describe("@desc", function() {
 			"path": "@msg.uri",
 			"headers": @msg.requestHeaders(3)
 		};
+		if (prevCookie) {
+			params.headers["Cookie"] = getNextCookie();
+		}
 @if(msg.hasRequestBody) {
 		var requestData = buildBody("@msg.requestContentType", @msg.requestBody(3));
 		params.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
@@ -73,7 +129,9 @@ describe("@desc", function() {
 				res.setEncoding("utf-8");
 				res.on("data", function(data) { body += data;});
 				res.on("end", function() { 
-					validateResponse(res, body);
+					setNextCookie(res.headers["set-cookie"]);
+					res.body = validateResponse(res, body);
+					prevResponse = res;
 					done();
 				});
 			});

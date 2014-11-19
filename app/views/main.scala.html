@@ -41,10 +41,23 @@
                   Hide html
                 </label>
               </li>
+              <li>
+                <label>
+                  <input type="checkbox" ng-model="filters.status304">
+                  Hide 304 response
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" ng-model="filters.status404">
+                  Hide 404 response
+                </label>
+              </li>
             </ul>
-            <button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button>
-            <br>
-            <button class="btn btn-sm btn-info" ng-click="test()">Generate test</button>
+            <ul class="generates">
+              <li><button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button></li>
+              <li><button class="btn btn-sm btn-info" ng-click="regenerateTest()">Regenerate</button></li>
+            </ul>
           </div>
         </div>
         <div class="main" id="main">

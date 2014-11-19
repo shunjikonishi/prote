@@ -26,6 +26,7 @@ import models.StorageManager
 import models.WebSocketManager
 import models.CacheManager
 import models.HostInfo
+import models.testgen.TestGenerator
 import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
@@ -169,11 +170,8 @@ object Application extends Controller {
   }
 
   def download(id: String) = Action { implicit request =>
-    StorageManager.getFile(id + ".js").map { file =>
-      sendFile(file, "test.js")
-    }.orElse {
-      new StorageManager(new File("test"), AppConfig.cookieName).getFile(id + ".js")
-        .map(file => sendFile(file, "test.js"))
+    TestGenerator.findZip(id).map { file =>
+      sendFile(file, file.getName)
     }.getOrElse(NotFound)
   }
 

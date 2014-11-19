@@ -179,6 +179,19 @@ pre.msg-body {
   text-align: right;
 }
 
+.generates {
+  margin-left: 0;
+  padding-left: 20px;
+}
+.generates li {
+  list-style: none;
+  padding-bottom: 4px;
+}
+
+.generates button {
+  width: 100px;
+}
+
 .msg-buttons {
   position: absolute;
   right: 0px;

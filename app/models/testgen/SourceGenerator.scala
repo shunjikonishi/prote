@@ -1,7 +1,8 @@
 package models.testgen
 
+import java.io.File
 trait SourceGenerator {
 
-  def doGenerate(desc: String, messages: Seq[MessageWrapper]): String
+  def generateTest(dir: File, name: String, desc: String, messages: Seq[MessageWrapper]): File
 
 }

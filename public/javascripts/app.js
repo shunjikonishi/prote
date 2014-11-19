@@ -138,6 +138,8 @@ var app = angular.module('App', ['bgDirectives'])
 		if (filters.image && value.resKind == MessageKind.Image) return false;
 		if (filters.script && value.resKind == MessageKind.Script) return false;
 		if (filters.html && value.resKind == MessageKind.HTML) return false;
+		if (filters.status304 && value.status == 304) return false;
+		if (filters.status404 && value.status == 404) return false;
 		return true;
 	}
 	function clear() {
@@ -164,9 +166,31 @@ var app = angular.module('App', ['bgDirectives'])
 				"ids": ids
 			},
 			"success": function(data) {
-				location.href = "/" + $scope.contextPath + "/download/" + data;
+				download(data);
 			}
 		});
+	}
+	function regenerateTest() {
+		var id = prompt("Input test id.", "");
+		if (!id) {
+			return;
+		}
+		con.request({
+			"command": "regenerateTest", 
+			"data" : {
+				"id": id
+			},
+			"success": function(data) {
+				if (data.error) {
+					alert(data.error);
+				} else {
+					download(id);
+				}
+			}
+		});
+	}
+	function download(id) {
+		location.href = "/" + $scope.contextPath + "/download/" + id;
 	}
 	function selectAll($event) {
 		var checked = $event.target.checked;
@@ -199,7 +223,9 @@ var app = angular.module('App', ['bgDirectives'])
 		filters = {
 			"image": false,
 			"script": false,
-			"html": false
+			"html": false,
+			"status304": false,
+			"status404": false
 		}
 	$.extend($scope, {
 		"list": list,
@@ -212,6 +238,7 @@ var app = angular.module('App', ['bgDirectives'])
 		"showResponse": showResponse,
 		"clear": clear,
 		"generateTest": generateTest,
+		"regenerateTest": regenerateTest,
 		"selectAll": selectAll,
 		"test": test,
 		"requestMessage": null,

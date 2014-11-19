@@ -15,7 +15,7 @@ import com.ning.http.client.Response
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
-class StorageManager(val dir: File, cookieName: String) {
+class StorageManager(val dir: File, cookieName: String = AppConfig.cookieName) {
 
   private def createFile(filename: String) = {
     val ret = new File(dir, filename)
