@@ -49,7 +49,9 @@ function compareJson(actual, expected, prefix) {
 			v2 = actual[key];
 		if (typeof(v1) === "object" && typeof(v2) === "object") {
 			compareJson(v2, v1, prefix + key + ".");
-		} else if (v1 !== IGNORE_VALUE) {
+		} else if (v1 === IGNORE_VALUE) {
+			assert.notEqual(typeof(v2), "undefined", "Key not found - " + prefix + key);
+		} else {
 			assert.equal(v2, v1, "Not equal - " + prefix + key + ": ");
 		}
 	}
