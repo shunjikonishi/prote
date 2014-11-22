@@ -1,6 +1,7 @@
 var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 	.controller("MainController", function($scope, $filter, $modal) 
 {
+window.$scope = $scope;
 	var LIST_MAX = 1000,
 		MessageKind = (function() {
 			var array = [
@@ -10,6 +11,7 @@ var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 					"HTML",
 					"Json",
 					"XML",
+					"UrlEncoded",
 					"Unknown"
 				],
 				ret = {};
@@ -21,47 +23,61 @@ var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 	function SelectedRequest() {
 		var self = this,
 			selected = null,
-			reqPrettyPrint = false,
-			resPrettyPrint = false;
+			reqExpanded = false,
+			resExpanded = false;
 
 		function current(v) {
 			if (v === undefined) {
 				return selected;
 			} else {
 				selected = v;
-				reqPrettyPrint = false;
-				resPrettyPrint = false;
+				reqExpanded = false;
+				resExpanded = false;
 				return self;
 			}
 		}
-		function isRequestJson() {
-			return !!selected && selected.reqKind === MessageKind.Json;
+		function requestKind() {
+			return selected ? selected.reqKind : MessageKind.Unknown;
 		}
-		function isResponseJson() {
-			return !!selected && selected.resKind === MessageKind.Json;
+		function responseKind() {
+			return selected ? selected.resKind : MessageKind.Unknown;
 		}
-		function requestPrettyPrint(v) {
+		function requestCanExpand() {
+			var kind = requestKind();
+			return kind == MessageKind.Json || 
+				kind == MessageKind.UrlEncoded || 
+				kind == MessageKind.XML;
+		}
+		function responseCanExpand() {
+			var kind = responseKind();
+			return kind == MessageKind.Json || 
+				kind == MessageKind.UrlEncoded || 
+				kind == MessageKind.XML;
+		}
+		function requestExpanded(v) {
 			if (v === undefined) {
-				return reqPrettyPrint;
+				return reqExpanded;
 			} else {
-				reqPrettyPrint = v;
+				reqExpanded = v;
 				return self;
 			}
 		}
-		function responsePrettyPrint(v) {
+		function responseExpanded(v) {
 			if (v === undefined) {
-				return resPrettyPrint;
+				return resExpanded;
 			} else {
-				resPrettyPrint = v;
+				resExpanded = v;
 				return self;
 			}
 		}
 		$.extend(this, {
 			"current": current,
-			"isRequestJson": isRequestJson,
-			"isResponseJson": isResponseJson,
-			"requestPrettyPrint": requestPrettyPrint,
-			"responsePrettyPrint": responsePrettyPrint
+			"requestKind": requestKind,
+			"responseKind": responseKind,
+			"requestCanExpand": requestCanExpand,
+			"responseCanExpand": responseCanExpand,
+			"requestExpanded": requestExpanded,
+			"responseExpanded": responseExpanded
 		});
 	}
 	function process(data) {
@@ -102,34 +118,34 @@ var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 		showRequest(false);
 		showResponse(false);
 	}
-	function showRequest(prettyPrint) {
+	function showRequest(expand) {
 		request = selected.current();
 		con.request({
 			"command": "request", 
 			"data" : {
 				"id": request.id,
-				"prettyPrint": prettyPrint
+				"expand": expand
 			},
 			"success": function(data) {
 				$scope.$apply(function() {
 					$scope.requestMessage = data;
-					selected.requestPrettyPrint(prettyPrint);
+					selected.requestExpanded(expand);
 				});
 			}
 		});
 	}
-	function showResponse(prettyPrint) {
+	function showResponse(expand) {
 		request = selected.current();
 		con.request({
 			"command": "response", 
 			"data" : {
 				"id": request.id,
-				"prettyPrint": prettyPrint
+				"expand": expand
 			},
 			"success": function(data) {
 				$scope.$apply(function() {
 					$scope.responseMessage = data;
-					selected.responsePrettyPrint(prettyPrint);
+					selected.responseExpanded(expand);
 				});
 			}
 		});
@@ -140,6 +156,10 @@ var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 		if (filters.html && value.resKind == MessageKind.HTML) return false;
 		if (filters.status304 && value.status == 304) return false;
 		if (filters.status404 && value.status == 404) return false;
+		if (filters.search) {
+			var str = value.method + " " + value.uri;
+			if (str.indexOf(filters.search) == -1) return false;
+		}
 		return true;
 	}
 	function clear() {
@@ -228,9 +248,11 @@ var app = angular.module('App', ['bgDirectives', 'ui.bootstrap'])
 			"script": false,
 			"html": false,
 			"status304": false,
-			"status404": false
+			"status404": false,
+			"search": ""
 		}
 	$.extend($scope, {
+		"MessageKind": MessageKind,
 		"list": list,
 		"filters": filters,
 		"selectedRequest": selected,

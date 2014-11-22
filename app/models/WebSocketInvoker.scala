@@ -16,15 +16,15 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
     }
     addHandler("request") { command =>
       val id = (command.data \ "id").as[String]
-      val prettyPrint = (command.data \ "prettyPrint").asOpt[Boolean].getOrElse(false)
+      val expand = (command.data \ "expand").asOpt[Boolean].getOrElse(false)
       val msg = StorageManager.getRequestMessage(id)
-      command.text(msg.toString(prettyPrint))
+      command.text(msg.toString(expand))
     }
     addHandler("response") { command =>
       val id = (command.data \ "id").as[String]
-      val prettyPrint = (command.data \ "prettyPrint").asOpt[Boolean].getOrElse(false)
+      val expand = (command.data \ "expand").asOpt[Boolean].getOrElse(false)
       val msg = StorageManager.getResponseMessage(id)
-      command.text(msg.toString(prettyPrint))
+      command.text(msg.toString(expand))
     }
     addHandler("generateTest") { command =>
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")

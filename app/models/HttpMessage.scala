@@ -3,6 +3,7 @@ package models
 import play.api.mvc.Cookies
 import play.api.libs.json._
 import java.io.File
+import java.net.URLDecoder
 import jp.co.flect.io.FileUtils
 
 abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers: Seq[HttpHeader], val body: Option[File]) {
@@ -77,6 +78,7 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
   def kind = {
     body.map { file =>
       contentType.toLowerCase match {
+        case str if (str == "application/x-www-form-urlencoded") => MessageKind.UrlEncoded
         case str if (str.startsWith("image/")) => MessageKind.Image
         case str if (str.endsWith("/javascript")) => MessageKind.Script
         case str if (str.endsWith("/css")) => MessageKind.Script
@@ -90,7 +92,7 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
 
   override def toString: String = toString(false)
 
-  def toString(prettyPrint: Boolean): String = {
+  def toString(expand: Boolean): String = {
     val buf = new StringBuilder()
     buf.append(initialLine).append("\r\n")
     headers.foreach(buf.append(_).append("\r\n"))
@@ -98,8 +100,23 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
     body.foreach { f =>
       if (isTextBody) {
         val str = FileUtils.readFileAsString(f)
-        if (prettyPrint && kind == MessageKind.Json) {
+        if (expand && kind == MessageKind.Json) {
           buf.append(Json.prettyPrint(Json.parse(str)))
+        } else if (expand && kind == MessageKind.UrlEncoded) {
+          str.split("&").foreach { kv =>
+            val cs = charset
+            kv.split("=").toList match {
+              case k :: v :: Nil =>
+                buf.append(URLDecoder.decode(k, cs))
+                  .append("=")
+                  .append(URLDecoder.decode(v, cs)).append("\n")
+              case k :: Nil =>
+                buf.append(URLDecoder.decode(k, cs))
+                  .append("=").append("\n")
+              case _ =>
+                buf.append(URLDecoder.decode(kv, cs)).append("\n")
+            }
+          }
         } else {
           buf.append(str)
         }
@@ -221,5 +238,6 @@ object MessageKind {
   case object HTML    extends MessageKind("HTML")
   case object Json    extends MessageKind("Json")
   case object XML     extends MessageKind("XML")
+  case object UrlEncoded extends MessageKind("UrlEncoded")
   case object Unknown extends MessageKind("Unknown")
 }

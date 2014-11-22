@@ -54,6 +54,12 @@
                   <input type="checkbox" ng-model="filters.status404">
                   Hide 404 response
                 </label>
+              <li>
+                <label>
+                  Find: 
+                  <input type="text" class="form-control" ng-model="filters.search">
+                </label>
+              </li>
               </li>
             </ul>
             <ul class="generates">
@@ -95,11 +101,11 @@
               <h2 class="msg-header">Request</h2>
               <div class="msg-buttons">
                 <button class="btn btn-xs btn-info" 
-                  ng-show="selectedRequest.isRequestJson() && !selectedRequest.requestPrettyPrint()"
+                  ng-show="selectedRequest.requestCanExpand() && !selectedRequest.requestExpanded()"
                   ng-click="showRequest(true)"
                 >PrettyPrint</button>
                 <button class="btn btn-xs btn-info" 
-                  ng-show="selectedRequest.isRequestJson() && selectedRequest.requestPrettyPrint()"
+                  ng-show="selectedRequest.requestCanExpand() && selectedRequest.requestExpanded()"
                   ng-click="showRequest(false)"
                 >Raw</button>
               </div>
@@ -111,11 +117,11 @@
               <h2 class="msg-header">Response</h2>
               <div class="msg-buttons">
                 <button class="btn btn-xs btn-info" 
-                  ng-show="selectedRequest.isResponseJson() && !selectedRequest.responsePrettyPrint()"
+                  ng-show="selectedRequest.responseCanExpand() && !selectedRequest.responseExpanded()"
                   ng-click="showResponse(true)"
                 >PrettyPrint</button>
                 <button class="btn btn-xs btn-info" 
-                  ng-show="selectedRequest.isResponseJson() && selectedRequest.responsePrettyPrint()"
+                  ng-show="selectedRequest.responseCanExpand() && selectedRequest.responseExpanded()"
                   ng-click="showResponse(false)"
                 >Raw</button>
               </div>
