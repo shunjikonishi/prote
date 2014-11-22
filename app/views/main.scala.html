@@ -19,54 +19,56 @@
       <bg-pane min-size="100">
         <div class="ctrl">
           <h1 class="logo">PROTE</h1>
-          <div>
-            <div class="clear">
-              <button class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
-            </div>
-            <h2 class="ctrl-header">Filters</h2>
-            <ul class="filters">
-              <li>
-                <label>
-                  <input type="checkbox" ng-model="filters.image">
-                  Hide images
-                </label>
-              </li>
-              <li>
-                <label>
-                  <input type="checkbox" ng-model="filters.script">
-                  Hide js and css
-                </label>
-              </li>
-              <li>
-                <label>
-                  <input type="checkbox" ng-model="filters.html">
-                  Hide html
-                </label>
-              </li>
-              <li>
-                <label>
-                  <input type="checkbox" ng-model="filters.status304">
-                  Hide 304 response
-                </label>
-              </li>
-              <li>
-                <label>
-                  <input type="checkbox" ng-model="filters.status404">
-                  Hide 404 response
-                </label>
-              <li>
-                <label>
-                  Find: 
-                  <input type="text" class="form-control" ng-model="filters.search">
-                </label>
-              </li>
-              </li>
-            </ul>
-            <ul class="generates">
-              <li><button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button></li>
-              <li><button class="btn btn-sm btn-info" ng-click="regenerateTest()">Regenerate</button></li>
-            </ul>
-          </div>
+          <tabset>
+            <tab heading="filters">
+              <div class="clear">
+                <button class="btn btn-sm btn-warning" ng-click="clear()">Clear</button>
+              </div>
+              <ul class="filters">
+                <li>
+                  <label>
+                    <input type="checkbox" ng-model="filters.image">
+                    Hide images
+                  </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" ng-model="filters.script">
+                    Hide js and css
+                  </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" ng-model="filters.html">
+                    Hide html
+                  </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" ng-model="filters.status304">
+                    Hide 304 response
+                  </label>
+                </li>
+                <li>
+                  <label>
+                    <input type="checkbox" ng-model="filters.status404">
+                    Hide 404 response
+                  </label>
+                <li>
+                  <label>
+                    Find: 
+                    <input type="text" class="form-control" ng-model="filters.search">
+                  </label>
+                </li>
+              </ul>
+            </tab>
+            <tab heading="Test">
+              <ul class="generates">
+                <li><button class="btn btn-sm btn-info" ng-click="generateTest()">Generate test</button></li>
+                <li><button class="btn btn-sm btn-info" ng-click="regenerateTest()">Regenerate</button></li>
+              </ul>
+            </tab>
+          </tabset>
         </div>
         <div class="main" id="main">
           <table class="table table-hover">

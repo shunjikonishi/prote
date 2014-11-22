@@ -31,6 +31,8 @@ import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
 
+  val client = new AsyncHttpClient()
+
   def proxy = Action.async(parse.raw) { implicit request =>
     def escape(str: String) = {
       str.foldLeft(new StringBuilder()) { (buf, c) =>
@@ -81,7 +83,6 @@ object Application extends Controller {
 
       val ret = Promise[Result]()
       val url = targetHost.protocol + "://" + targetHost.name + escape(request.uri)
-      val client = new AsyncHttpClient()
       val proxyReq = requestMessage.headers.foldLeft(request.method match {
         case "GET" =>client.prepareGet(url)
         case "POST" => client.preparePost(url)

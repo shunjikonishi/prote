@@ -8,7 +8,7 @@ scalaVersion := "2.11.1"
 
 libraryDependencies ++= Seq(
   cache,
-  ws,
+  "com.ning" % "async-http-client" % "1.8.14",
   "jp.co.flect" % "flectCommon" % "1.2.2",
   "net.debasishg" %% "redisclient" % "2.13"
 )
