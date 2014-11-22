@@ -144,8 +144,8 @@ class StorageManager(val dir: File, cookieName: String = AppConfig.cookieName) {
   }
 
   def getWebSocketMessage(id: String, ssl: Boolean, outgoing: Boolean): Option[WebSocketMessage] = {
-    val file = new File(id +
-      (if (outgoing) ".request" else ".reponse") +
+    val file = createFile(id +
+      (if (outgoing) ".request" else ".response") +
       (if (ssl) ".wss" else ".ws")
     )
     if (file.exists) {
