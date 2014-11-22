@@ -135,11 +135,25 @@ class StorageManager(val dir: File, cookieName: String = AppConfig.cookieName) {
     FileUtils.writeFile(file, text, "utf-8")
     file
   }
+
+  def save(id: String, msg: WebSocketMessage): File = {
+    val kind = if (msg.outgoing) ".request." else ".response."
+    val file = createFile(id + kind + msg.protocol)
+    FileUtils.writeFile(file, msg.body, "utf-8")
+    file
+  }
+
+  def getWebSocketMessage(id: String, ssl: Boolean, outgoing: Boolean): Option[WebSocketMessage] = {
+    val file = new File(id +
+      (if (outgoing) ".request" else ".reponse") +
+      (if (ssl) ".wss" else ".ws")
+    )
+    if (file.exists) {
+      val body = FileUtils.readFileAsString(file, "utf-8")
+      Some(WebSocketMessage(ssl, outgoing, body))
+    } else {
+      None
+    }
+  }
 }
 
-object StorageManager extends StorageManager(
-  new File("proxy_logs"), 
-  AppConfig.cookieName
-) {
-  dir.mkdirs
-}

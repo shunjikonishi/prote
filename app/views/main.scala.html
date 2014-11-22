@@ -87,9 +87,9 @@
                 ng-click="clickTableRow(request)">
                 <td class="sel"><input type="checkbox" ng-model="request.select"/></td>
                 <td class="request">{{request.protocol}}</td>
-                <td class="request">{{request.method}} {{request.uri}}</td>
+                <td class="request">{{request.desc}}</td>
                 <td class="status">{{request.status}}</td>
-                <td class="time">{{request.time}}ms</td>
+                <td class="time">{{request.time ? request.time + "ms" : "-"}}</td>
               </tr>
             <tbody>
             </tbody>

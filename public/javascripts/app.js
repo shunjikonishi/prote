@@ -26,6 +26,10 @@ window.$scope = $scope;
 			reqExpanded = false,
 			resExpanded = false;
 
+		function isWs() {
+			if (!selected) return false;
+			return selected.protocol.indexOf("ws") == 0;
+		}
 		function current(v) {
 			if (v === undefined) {
 				return selected;
@@ -37,10 +41,14 @@ window.$scope = $scope;
 			}
 		}
 		function requestKind() {
-			return selected ? selected.reqKind : MessageKind.Unknown;
+			if (!selected) return MessageKind.Unknown;
+			if (selected.reqKind) return selected.reqKind;
+			return MessageKind.Unknown;
 		}
 		function responseKind() {
-			return selected ? selected.resKind : MessageKind.Unknown;
+			if (!selected) return MessageKind.Unknown;
+			if (selected.resKind) return selected.resKind;
+			return MessageKind.Unknown;
 		}
 		function requestCanExpand() {
 			var kind = requestKind();
@@ -81,17 +89,26 @@ window.$scope = $scope;
 		});
 	}
 	function process(data) {
+		data.select = false;
+		data.desc = data.method + " " + data.uri;
+		addData(data);
+	}
+	function processWS(data) {
+		data.select = false;
+		data.desc = data.outgoing ? "-->" : "<--";
+		addData(data);
+	}
+	function addData(data) {
 		$scope.$apply(function() {
 			if (list.length > LIST_MAX) {
 				list.shift();
 			}
-			data.select = false;
 			list.push(data);
 			setTimeout(function() {
 				var mainDiv = $("#main")[0];
 				mainDiv.scrollTop = mainDiv.scrollHeight;
 			}, 0);
-		})
+		});
 	}
 	function init() {
 		var uri = 
@@ -100,6 +117,7 @@ window.$scope = $scope;
 			"/" + $scope.contextPath + "/ws";
 		con = new room.Connection(uri);
 		con.on("process", process);
+		con.on("processWS", processWS);
 	}
 	function tableClass(request) {
 		if (selected.current() && selected.current().id === request.id) {
@@ -124,6 +142,7 @@ window.$scope = $scope;
 			"command": "request", 
 			"data" : {
 				"id": request.id,
+				"protocol": request.protocol,
 				"expand": expand
 			},
 			"success": function(data) {
@@ -140,6 +159,7 @@ window.$scope = $scope;
 			"command": "response", 
 			"data" : {
 				"id": request.id,
+				"protocol": request.protocol,
 				"expand": expand
 			},
 			"success": function(data) {
@@ -157,8 +177,7 @@ window.$scope = $scope;
 		if (filters.status304 && value.status == 304) return false;
 		if (filters.status404 && value.status == 404) return false;
 		if (filters.search) {
-			var str = value.method + " " + value.uri;
-			if (str.indexOf(filters.search) == -1) return false;
+			if (value.desc.indexOf(filters.search) == -1) return false;
 		}
 		return true;
 	}

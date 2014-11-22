@@ -1,5 +1,6 @@
 package models.testgen
 
+import models.ProxyManager
 import models.StorageManager
 import java.io.File
 import java.io.FileInputStream
@@ -73,7 +74,7 @@ object TestGenerator {
   }
 
   def apply(kind: String): TestGenerator = {
-    val sm = StorageManager
+    val sm = ProxyManager.storageManager
     newInstance(baseDir, sm, kind)
   }
 

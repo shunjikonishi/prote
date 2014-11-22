@@ -8,26 +8,40 @@ import models.testgen.TestGenerator
 import models.testgen.MochaTestGenerator
 import models.testgen.MessageWrapper
 
-class WebSocketInvoker(sessionId: String) extends CommandInvoker {
+class WebSocketInvoker(pm: ProxyManager, sessionId: String) extends CommandInvoker {
 
   private var _closed = false
   def closed = _closed
 
   private def init = {
+    val sm = pm.storageManager
+    
     addHandler("noop") { command =>
       CommandResponse.None
     }
     addHandler("request") { command =>
       val id = (command.data \ "id").as[String]
+      val protocol = (command.data \ "protocol").as[String]
       val expand = (command.data \ "expand").asOpt[Boolean].getOrElse(false)
-      val msg = StorageManager.getRequestMessage(id)
-      command.text(msg.toString(expand))
+      val text = if (protocol.startsWith("http")) {
+        val msg = sm.getRequestMessage(id)
+        msg.toString(expand)
+      } else {
+        webSocketText(id, protocol == "wss", true, expand)
+      }
+      command.text(text)
     }
     addHandler("response") { command =>
       val id = (command.data \ "id").as[String]
+      val protocol = (command.data \ "protocol").as[String]
       val expand = (command.data \ "expand").asOpt[Boolean].getOrElse(false)
-      val msg = StorageManager.getResponseMessage(id)
-      command.text(msg.toString(expand))
+      val text = if (protocol.startsWith("http")) {
+        val msg = sm.getResponseMessage(id)
+        msg.toString(expand)
+      } else {
+        webSocketText(id, protocol == "wss", false, expand)
+      }
+      command.text(text)
     }
     addHandler("generateTest") { command =>
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")
@@ -67,8 +81,24 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
     _closed = true
   }
 
+  private def webSocketText(id: String, ssl: Boolean, outgoing: Boolean, expand: Boolean): String = {
+    val msg = pm.storageManager.getWebSocketMessage(id, ssl, outgoing)
+    msg.map { msg =>
+      if (expand) {
+        try {
+          Json.prettyPrint(Json.parse(msg.body))
+        } catch {
+          case e: Throwable =>
+            msg.body
+        }
+      } else {
+        msg.body
+      }
+    }.getOrElse("")
+  }
 
-  def process(id: String, request: RequestMessage, response: ResponseMessage, time: Long) = {
+
+  def process(id: String, request: RequestMessage, response: ResponseMessage, time: Long): Unit = {
     val reqKind = request.kind
     val resKind = response.kind match {
       case MessageKind.None | MessageKind.Unknown => request.responseKindFromPath
@@ -83,6 +113,18 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       "resKind" -> JsString(resKind.toString),
       "status" -> JsNumber(response.statusLine.code),
       "time" -> JsNumber(time)
+    )))
+    send(command)
+  }
+
+  def process(id: String, msg: WebSocketMessage): Unit = {
+    val kind = if (msg.body.startsWith("{") && msg.body.endsWith("}")) MessageKind.Json else MessageKind.Unknown
+    val kindKey = if (msg.outgoing) "reqKind" else "resKind"
+    val command = new CommandResponse("processWS", JsObject(Seq(
+      "id" -> JsString(id),
+      "protocol" -> JsString(msg.protocol),
+      "outgoing" -> JsBoolean(msg.outgoing),
+      kindKey -> JsString(kind.toString)
     )))
     send(command)
   }

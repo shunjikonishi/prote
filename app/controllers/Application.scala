@@ -22,8 +22,7 @@ import java.net.URI
 import java.net.URISyntaxException
 import java.util.UUID
 import models.AppConfig
-import models.StorageManager
-import models.WebSocketManager
+import models.ProxyManager
 import models.WebSocketProxy
 import models.CacheManager
 import models.HostInfo
@@ -32,7 +31,8 @@ import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
 
-  val client = new AsyncHttpClient()
+  val pm = ProxyManager
+  val client = pm.httpClient
 
   def proxy = Action.async(parse.raw) { implicit request =>
     def escape(str: String) = {
@@ -75,7 +75,7 @@ object Application extends Controller {
     val cache = CacheManager(sessionId)
     val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
     hosts.headOption.map { targetHost =>
-      val sm = StorageManager
+      val sm = pm.storageManager
       val requestId = UUID.randomUUID.toString
       val requestMessage = sm.createRequestMessage(targetHost, request, requestId)
       if (Logger.isDebugEnabled) {
@@ -143,7 +143,7 @@ object Application extends Controller {
             Result(header, body)
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
-          WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+          pm.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
           val nextHost = redirectHost.getOrElse(hosts.head)
           cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
           response
@@ -163,14 +163,14 @@ object Application extends Controller {
     val cache = CacheManager(sessionId)
     val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
     val h = hosts.headOption.map { targetHost =>
-      val sm = StorageManager
+      val sm = pm.storageManager
       val requestId = UUID.randomUUID.toString
       val requestMessage = sm.createRequestMessage(targetHost, Request(request, RawBuffer(0)), requestId)
       val start = System.currentTimeMillis
-      WebSocketProxy(client, requestMessage) { response =>
+      pm.webSocketProxy(sessionId, requestMessage) { response =>
         val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
         val time = System.currentTimeMillis - start
-        WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+        pm.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
       }
     } getOrElse {
       throw new IllegalStateException()
@@ -188,7 +188,7 @@ object Application extends Controller {
 
   def ws = WebSocket.using[String] { implicit request =>
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(throw new IllegalStateException())
-    val h = WebSocketManager.getInvoker(sessionId)
+    val h = pm.getInvoker(sessionId)
     (h.in, h.out)
   }
 
