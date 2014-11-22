@@ -4,7 +4,7 @@ class WebSocketManager {
   var map: Map[String, WebSocketInvoker] = Map.empty
 
   def getInvoker(sessionId: String): WebSocketInvoker = {
-    map.get(sessionId) match {
+    map.get(sessionId).filter(!_.closed) match {
       case Some(x) => x
       case None =>
         val ret = new WebSocketInvoker(sessionId)

@@ -26,13 +26,14 @@ object Global extends GlobalSettings {
         uri =  "/" + AppConfig.DEFAULT_CONTEXT + "/" + request.uri.substring(consolePrefix.length)
       )
       super.onRouteRequest(newRequest)
+    } else if (request.headers.get("Upgrade").filter(_ == "websocket").isDefined) {
+      Some(controllers.Application.proxyWS)
     } else {
       Some(controllers.Application.proxy)
     }
   }
 
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
-println("onError1: " + ex.getClass)
     ex.getCause match {
       case e: SSLNotSupportedException => 
         Future.successful(InternalServerError(e.getMessage))

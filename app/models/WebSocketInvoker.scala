@@ -10,6 +10,9 @@ import models.testgen.MessageWrapper
 
 class WebSocketInvoker(sessionId: String) extends CommandInvoker {
 
+  private var _closed = false
+  def closed = _closed
+
   private def init = {
     addHandler("noop") { command =>
       CommandResponse.None
@@ -59,6 +62,11 @@ class WebSocketInvoker(sessionId: String) extends CommandInvoker {
       }
     }
   }
+
+  override protected def onDisconnect: Unit = {
+    _closed = true
+  }
+
 
   def process(id: String, request: RequestMessage, response: ResponseMessage, time: Long) = {
     val reqKind = request.kind

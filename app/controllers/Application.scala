@@ -24,6 +24,7 @@ import java.util.UUID
 import models.AppConfig
 import models.StorageManager
 import models.WebSocketManager
+import models.WebSocketProxy
 import models.CacheManager
 import models.HostInfo
 import models.testgen.TestGenerator
@@ -78,7 +79,7 @@ object Application extends Controller {
       val requestId = UUID.randomUUID.toString
       val requestMessage = sm.createRequestMessage(targetHost, request, requestId)
       if (Logger.isDebugEnabled) {
-        Logger.debug(requestMessage.toString)
+//        Logger.debug(requestMessage.toString)
       }
 
       val ret = Promise[Result]()
@@ -117,7 +118,7 @@ object Application extends Controller {
           val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
           val time = System.currentTimeMillis - start
           if (Logger.isDebugEnabled) {
-            Logger.debug(responseMessage.toString)
+//            Logger.debug(responseMessage.toString)
           }
           val redirectHost = getRedirectHost(response, hosts)
           val headers = responseMessage.headersToMap.map { case (name, value) =>
@@ -143,7 +144,6 @@ object Application extends Controller {
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
           WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
-
           val nextHost = redirectHost.getOrElse(hosts.head)
           cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
           response
@@ -156,6 +156,26 @@ object Application extends Controller {
     }.getOrElse {
       Future.successful(Ok("TARGET_HOST is not defined."))
     }
+  }
+
+  def proxyWS = WebSocket.using[String] { implicit request =>
+    val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
+    val cache = CacheManager(sessionId)
+    val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
+    val h = hosts.headOption.map { targetHost =>
+      val sm = StorageManager
+      val requestId = UUID.randomUUID.toString
+      val requestMessage = sm.createRequestMessage(targetHost, Request(request, RawBuffer(0)), requestId)
+      val start = System.currentTimeMillis
+      WebSocketProxy(client, requestMessage) { response =>
+        val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
+        val time = System.currentTimeMillis - start
+        WebSocketManager.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+      }
+    } getOrElse {
+      throw new IllegalStateException()
+    }
+    (h.in, h.out)
   }
 
   def main = Action { implicit request =>
