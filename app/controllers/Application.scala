@@ -26,7 +26,6 @@ import models.ProxyManager
 import models.WebSocketProxy
 import models.CacheManager
 import models.HostInfo
-import models.testgen.TestGenerator
 import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
@@ -181,7 +180,7 @@ object Application extends Controller {
   def main = Action { implicit request =>
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
     val contextPath = AppConfig.consoleContext
-    Ok(views.html.main(sessionId, contextPath)).withCookies(
+    Ok(views.html.main(sessionId, contextPath, pm.generators)).withCookies(
       Cookie(AppConfig.cookieName, sessionId)
     )
   }
@@ -193,7 +192,7 @@ object Application extends Controller {
   }
 
   def download(id: String) = Action { implicit request =>
-    TestGenerator.findZip(id).map { file =>
+    pm.findZip(id).map { file =>
       sendFile(file, file.getName)
     }.getOrElse(NotFound)
   }

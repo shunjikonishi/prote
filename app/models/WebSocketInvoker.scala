@@ -4,9 +4,6 @@ import roomframework.command._
 import play.api.libs.json._
 import java.util.UUID
 import java.io.File
-import models.testgen.TestGenerator
-import models.testgen.MochaTestGenerator
-import models.testgen.MessageWrapper
 
 class WebSocketInvoker(pm: ProxyManager, sessionId: String) extends CommandInvoker {
 
@@ -51,7 +48,7 @@ class WebSocketInvoker(pm: ProxyManager, sessionId: String) extends CommandInvok
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
-      val id = TestGenerator(kind).generate(name, desc, ids)
+      val id = pm.testGenerator(kind).generate(name, desc, ids)
       command.text(id)
     }
     addHandler("regenerateTest") { command =>
@@ -60,13 +57,13 @@ class WebSocketInvoker(pm: ProxyManager, sessionId: String) extends CommandInvok
       val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
       val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
 
-      TestGenerator.regenerator(id, kind).map { gen =>
-        val maxId = new File(TestGenerator.baseDir, id)
+      pm.regenerator(id, kind).map { gen =>
+        val ids = new File(pm.testLogs, id)
           .listFiles
           .filter(_.getName.endsWith(".request.headers"))
           .map(_.getName.takeWhile(_ != '.').toInt)
-          .max
-        val ids = List.range(1, maxId + 1).map(_.toString)
+          .sorted
+          .map(_.toString)
         gen.generate(id, name, desc, ids)
         command.text(id)
       }.getOrElse {

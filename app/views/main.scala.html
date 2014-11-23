@@ -1,4 +1,4 @@
-@(sessionId: String, contextPath: String)
+@(sessionId: String, contextPath: String, generators: Seq[(String, String)])
 <!DOCTYPE html>
 <html ng-app="App">
 <head>
@@ -159,7 +159,9 @@
         <div class="form-group">
           <label for="generate-option-kind">Kind</label>
           <select class="form-control" id="generate-option-kind" ng-model="generateOption.kind">
-            <option value="mocha">JavaScript(Mocha)</option>
+            @generators.map{ v =>
+              <option value="@v._1">@v._2</option>
+            }
           </select>
         </div>
       </form>

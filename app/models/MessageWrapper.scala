@@ -1,12 +1,9 @@
-package models.testgen
+package models
 
 import play.api.mvc.BodyParsers
 import play.api.libs.json._
 import java.net.URLEncoder
 import java.net.URLDecoder
-import models.HttpMessage
-import models.RequestMessage
-import models.ResponseMessage
 import org.apache.commons.codec.binary.Base64
 import jp.co.flect.io.FileUtils
 

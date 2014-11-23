@@ -1,7 +1,5 @@
-package models.testgen
+package models
 
-import models.ProxyManager
-import models.StorageManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -9,9 +7,9 @@ import jp.co.flect.io.FileUtils
 import java.util.zip.ZipOutputStream
 import java.util.zip.ZipEntry
 import java.util.UUID
+import testgen.SourceGenerator
 
-abstract class TestGenerator(dir: File, sm: StorageManager) {
-  srcGen: SourceGenerator =>
+case class TestGenerator(dir: File, sm: StorageManager, srcGen: SourceGenerator) {
 
   def generate(name: String, desc: String, ids: Seq[String]): String = {
     val id = UUID.randomUUID.toString
@@ -56,41 +54,6 @@ abstract class TestGenerator(dir: File, sm: StorageManager) {
       zos.close
     }
     outputFile
-  }
-}
-
-object TestGenerator {
-  val baseDir = {
-    val ret = new File("test_logs")
-    ret.mkdirs
-    ret
-  }
-
-  private def newInstance(dir: File, sm: StorageManager, kind: String) = {
-    kind match {
-      case "mocha" => new TestGenerator(dir, sm) with MochaTestGenerator
-      case _ => throw new IllegalArgumentException("Not implemented type: " + kind)
-    }
-  }
-
-  def apply(kind: String): TestGenerator = {
-    val sm = ProxyManager.storageManager
-    newInstance(baseDir, sm, kind)
-  }
-
-  def regenerator(id: String, kind: String): Option[TestGenerator] = {
-    val testDir = new File(baseDir, id)
-    Option(testDir).filter(_.exists).map { f =>
-      val sm = new StorageManager(f)
-      newInstance(baseDir, sm, kind)
-    }
-  }
-
-  def findZip(id: String): Option[File] = {
-    val dir = new File("test_logs", id)
-    Option(dir)
-      .filter(_.exists)
-      .flatMap(_.listFiles.find(_.getName.endsWith(".zip")))
   }
 }
 

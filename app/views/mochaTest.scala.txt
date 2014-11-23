@@ -1,4 +1,4 @@
-@(desc: String, messages: Seq[models.testgen.MessageWrapper])
+@(desc: String, messages: Seq[models.MessageWrapper])
 var http = require("http"),
 	https = require("https"),
 	assert = require("chai").assert,
