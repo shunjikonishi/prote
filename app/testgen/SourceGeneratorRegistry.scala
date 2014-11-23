@@ -1,6 +1,6 @@
 package testgen
 
-object SourceGeneratorRegistory {
+object SourceGeneratorRegistry {
 
   private val map: Map[String, (String, SourceGenerator)] = Map(
     "mocha" -> ("JavaScript(Mocha)", new MochaTestGenerator)

@@ -85,7 +85,7 @@
                 ng-repeat="request in list | filter:filterRow" 
                 ng-class="tableClass(request)" 
                 ng-click="clickTableRow(request)">
-                <td class="sel"><input type="checkbox" ng-model="request.select"/></td>
+                <td class="sel"><input type="checkbox" ng-model="request.select" ng-show="request.http"/></td>
                 <td class="request">{{request.protocol}}</td>
                 <td class="request">{{request.desc}}</td>
                 <td class="status">{{request.status}}</td>

@@ -5,7 +5,7 @@ import play.api.libs.json._
 import java.util.UUID
 import java.io.File
 
-class WebSocketInvoker(pm: ProxyManager, sessionId: String) extends CommandInvoker {
+class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
 
   private var _closed = false
   def closed = _closed

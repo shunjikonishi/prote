@@ -26,7 +26,7 @@ class WebSocketProxy(
     ws.sendTextMessage(body)
     val id = UUID.randomUUID.toString
     pm.storageManager.save(id, msg)
-    pm.getInvoker(sessionId).process(id, msg)
+    pm.console(sessionId).process(id, msg)
   }.map(_ => ws.close)
 
   val ws = {
@@ -49,7 +49,7 @@ class WebSocketProxy(
     val msg = WebSocketMessage(request.host.ssl, false, body)
     val id = UUID.randomUUID.toString
     pm.storageManager.save(id, msg)
-    pm.getInvoker(sessionId).process(id, msg)
+    pm.console(sessionId).process(id, msg)
   }
 
 

@@ -30,6 +30,10 @@ window.$scope = $scope;
 			if (!selected) return false;
 			return selected.protocol.indexOf("ws") == 0;
 		}
+		function isHttp() {
+			if (!selected) return false;
+			return selected.protocol.indexOf("http") == 0;
+		}
 		function current(v) {
 			if (v === undefined) {
 				return selected;
@@ -80,6 +84,8 @@ window.$scope = $scope;
 		}
 		$.extend(this, {
 			"current": current,
+			"isWs": isWs,
+			"isHttp": isHttp,
 			"requestKind": requestKind,
 			"responseKind": responseKind,
 			"requestCanExpand": requestCanExpand,
@@ -89,12 +95,10 @@ window.$scope = $scope;
 		});
 	}
 	function process(data) {
-		data.select = false;
 		data.desc = data.method + " " + data.uri;
 		addData(data);
 	}
 	function processWS(data) {
-		data.select = false;
 		data.desc = data.outgoing ? "-->" : "<--";
 		addData(data);
 	}
@@ -102,7 +106,10 @@ window.$scope = $scope;
 		$scope.$apply(function() {
 			if (list.length > LIST_MAX) {
 				list.shift();
+			data.select = false;
 			}
+			data.http = data.protocol.indexOf("http") == 0;
+			data.ws = !data.http;
 			list.push(data);
 			setTimeout(function() {
 				var mainDiv = $("#main")[0];
@@ -249,7 +256,9 @@ window.$scope = $scope;
 	function selectAll($event) {
 		var checked = $event.target.checked;
 		$.each($filter("filter")(list, filterRow), function(idx, value) {
-			value.select = checked;
+			if (value.http) {
+				value.select = checked;
+			}
 		});
 	}
 	function test() {

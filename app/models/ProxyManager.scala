@@ -3,7 +3,9 @@ package models
 import com.ning.http.client.AsyncHttpClient
 import com.ning.http.client.Response
 import java.io.File
-import testgen.SourceGeneratorRegistory
+import testgen.SourceGeneratorRegistry
+import interceptors.InterceptorRegistry
+import interceptors.Interceptor
 
 class ProxyManager {
 
@@ -17,29 +19,31 @@ class ProxyManager {
 
   val storageManager = new StorageManager(proxyLogs, AppConfig.cookieName)
 
-  private var invokerMap: Map[String, WebSocketInvoker] = Map.empty
+  private var invokerMap: Map[String, Console] = Map.empty
 
-  def getInvoker(sessionId: String): WebSocketInvoker = {
+  def console(sessionId: String): Console = {
     invokerMap.get(sessionId).filter(!_.closed) match {
       case Some(x) => x
       case None =>
-        val ret = new WebSocketInvoker(this, sessionId)
+        val ret = new Console(this, sessionId)
         invokerMap += (sessionId -> ret)
         ret
     }
   }
 
-  def generators: Seq[(String, String)] = SourceGeneratorRegistory.generators.toSeq
+  def interceptor(path: String): Interceptor = InterceptorRegistry.get(path)
+
+  def generators: Seq[(String, String)] = SourceGeneratorRegistry.generators.toSeq
 
   def testGenerator(name: String) = {
-    new TestGenerator(testLogs, storageManager, SourceGeneratorRegistory.get(name))
+    new TestGenerator(testLogs, storageManager, SourceGeneratorRegistry.get(name))
   }
 
   def regenerator(id: String, name: String): Option[TestGenerator] = {
     val testDir = new File(testLogs, id)
     Option(testDir).filter(_.exists).map { f =>
       val sm = new StorageManager(f)
-      new TestGenerator(testLogs, sm, SourceGeneratorRegistory.get(name))
+      new TestGenerator(testLogs, sm, SourceGeneratorRegistry.get(name))
     }
   }
 

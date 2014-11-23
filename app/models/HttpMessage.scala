@@ -57,6 +57,12 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
     (h.name, JsString(h.value))
   })
 
+  def isChunked = {
+    headers.find(_.name.equalsIgnoreCase("Transfer-Encoding"))
+      .map(_.value.equalsIgnoreCase("chunked"))
+      .getOrElse(false)
+  }
+
   def toJson = {
     val initialLineKey = if (isRequest) "requestLine" else "statusLine"
     JsObject(Seq(
@@ -177,12 +183,6 @@ case class ResponseMessage(override val host: HostInfo, statusLine: StatusLine, 
   extends HttpMessage(host, statusLine.toString, headers, body) 
 {
   val isRequest = false
-  def isChunked = {
-    headers.find(_.name.equalsIgnoreCase("Transfer-Encoding"))
-      .map(_.value.equalsIgnoreCase("chunked"))
-      .getOrElse(false)
-  }
-
 }
 
 object ResponseMessage {

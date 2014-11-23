@@ -26,6 +26,7 @@ import models.ProxyManager
 import models.WebSocketProxy
 import models.CacheManager
 import models.HostInfo
+import models.ResponseMessage
 import exceptions.SSLNotSupportedException
 
 object Application extends Controller {
@@ -70,6 +71,19 @@ object Application extends Controller {
           }
         }
     }
+    def toResult(response: ResponseMessage, headersOp: Option[Map[String, String]] = None): Result = {
+      val headers = headersOp.getOrElse(response.headersToMap)
+      val body = response.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
+      response.isChunked match {
+        case true =>
+          Status(response.statusLine.code)
+            .chunked(body)
+            .withHeaders(headers.toSeq:_*)
+        case false =>
+          val header = ResponseHeader(response.statusLine.code, headers)
+          Result(header, body)
+      }
+    }
     val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
     val cache = CacheManager(sessionId)
     val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
@@ -77,9 +91,7 @@ object Application extends Controller {
       val sm = pm.storageManager
       val requestId = UUID.randomUUID.toString
       val requestMessage = sm.createRequestMessage(targetHost, request, requestId)
-      if (Logger.isDebugEnabled) {
-//        Logger.debug(requestMessage.toString)
-      }
+      val interceptor = pm.interceptor(request.path)
 
       val ret = Promise[Result]()
       val url = targetHost.protocol + "://" + targetHost.name + escape(request.uri)
@@ -116,9 +128,6 @@ object Application extends Controller {
         override def onCompleted(response: Response): Response = {
           val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
           val time = System.currentTimeMillis - start
-          if (Logger.isDebugEnabled) {
-//            Logger.debug(responseMessage.toString)
-          }
           val redirectHost = getRedirectHost(response, hosts)
           val headers = responseMessage.headersToMap.map { case (name, value) =>
             val newValue = if (name.equalsIgnoreCase("Location")) {
@@ -142,7 +151,7 @@ object Application extends Controller {
             Result(header, body)
           }).withCookies(Cookie(AppConfig.cookieName, sessionId))
           ret.success(result)
-          pm.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+          pm.console(sessionId).process(requestId, requestMessage, responseMessage, time)
           val nextHost = redirectHost.getOrElse(hosts.head)
           cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
           response
@@ -169,7 +178,7 @@ object Application extends Controller {
       pm.webSocketProxy(sessionId, requestMessage) { response =>
         val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
         val time = System.currentTimeMillis - start
-        pm.getInvoker(sessionId).process(requestId, requestMessage, responseMessage, time)
+        pm.console(sessionId).process(requestId, requestMessage, responseMessage, time)
       }
     } getOrElse {
       throw new IllegalStateException()
@@ -187,7 +196,7 @@ object Application extends Controller {
 
   def ws = WebSocket.using[String] { implicit request =>
     val sessionId = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(throw new IllegalStateException())
-    val h = pm.getInvoker(sessionId)
+    val h = pm.console(sessionId)
     (h.in, h.out)
   }
 
