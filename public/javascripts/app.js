@@ -99,7 +99,6 @@ window.$scope = $scope;
 		addData(data);
 	}
 	function processWS(data) {
-		data.desc = data.outgoing ? "-->" : "<--";
 		addData(data);
 	}
 	function addData(data) {

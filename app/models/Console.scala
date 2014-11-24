@@ -117,10 +117,14 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
   def process(id: String, msg: WebSocketMessage): Unit = {
     val kind = if (msg.body.startsWith("{") && msg.body.endsWith("}")) MessageKind.Json else MessageKind.Unknown
     val kindKey = if (msg.outgoing) "reqKind" else "resKind"
+    val desc = (if (msg.outgoing) "--> " else "<-- ") + {
+      if (msg.body.length() < 100) msg.body else msg.body.substring(0, 100) + "..."
+    }
     val command = new CommandResponse("processWS", JsObject(Seq(
       "id" -> JsString(id),
       "protocol" -> JsString(msg.protocol),
       "outgoing" -> JsBoolean(msg.outgoing),
+      "desc" -> JsString(desc),
       kindKey -> JsString(kind.toString)
     )))
     send(command)
