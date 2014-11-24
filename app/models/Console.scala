@@ -66,7 +66,7 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
           .map(_.getName.takeWhile(_ != '.').toInt)
           .sorted
           .map(_.toString)
-        gen.generate(id, name, desc, ids, external)
+        gen.generate(name, desc, ids, external, id)
         command.text(id)
       }.getOrElse {
         command.json(JsObject(Seq(

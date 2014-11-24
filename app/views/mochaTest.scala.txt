@@ -2,18 +2,15 @@
 var http = require("http"),
 	https = require("https"),
 	assert = require("chai").assert,
-	@external.map(v=>external = "@v",).getOrElse(external = null,)
+	@external.map{v=>external = require("@v")}.getOrElse{external = null},
 	querystring = require("querystring");
 var IGNORE_KEYS = [],
 	IGNORE_VALUE = "__IGNORE__";
 
-function interceptor(prevResponse, requestParams, requestBody) {
-	//Add customization.
-}
 function Interceptor() {
-	function buildTestData(data) {
-		if (external && external.buildData) {
-			return external.buildData(data);
+	function buildTestData(request, data) {
+		if (external && external.buildTestData) {
+			return external.buildTestData(request, data);
 		}
 		return data;
 	}
@@ -79,6 +76,11 @@ function compareJson(actual, expected, prefix) {
 			assert.equal(v2, v1, "Not equal - " + prefix + key + ": ");
 		}
 	}
+}
+function isJsonType(obj) {
+	if (!obj || !obj.headers) return false;
+	var ct = obj.headers["content-type"];
+	return ct && ct.indexOf("application/json") == 0;
 }
 function Cookies() {
 	function Cookie(name, value) {
@@ -180,7 +182,7 @@ describe("@desc", function() {
 				return;
 			}
 			assert.equal(response.statusCode, @msg.statusCode);
-			if (response.headers["content-type"] === "application/json" && testData) {
+			if (isJsonType(response) && testData) {
 				compareJson(response.body, testData);
 			}
 		}
@@ -192,7 +194,7 @@ describe("@desc", function() {
 				"headers": @msg.requestHeaders(4),
 				"body": @msg.requestBody(4)
 			},
-			testData = interceptor.buildTestData(@msg.responseBody(3));
+			testData = interceptor.buildTestData(request, @msg.responseBody(3));
 
 		//Calc cookie
 		cookies.addCookie(request.headers["Cookie"]);
@@ -201,17 +203,17 @@ describe("@desc", function() {
 			request.headers["Cookie"] = cookie;
 		}
 		interceptor.hookRequest(prevResponse, request);
-		var requestData = buildBody("@msg.requestContentType", requestData);
+		var requestData = buildBody("@msg.requestContentType", request.body);
 		if (requestData) {
 			request.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
 		}
-		var req = con.request(params, function(res) {
+		var req = con.request(request, function(res) {
 				var body = "";
 				res.setEncoding("utf-8");
 				res.on("data", function(data) { body += data;});
 				res.on("end", function() { 
 					cookies.addSetCookie(res.headers["set-cookie"]);
-					if (res.headers["content-type"] === "application/json") {
+					if (isJsonType(res)) {
 						body = JSON.parse(body);
 					}
 					res.body = body;
