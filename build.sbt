@@ -10,7 +10,7 @@ libraryDependencies ++= Seq(
   cache,
   "com.ning" % "async-http-client" % "1.8.14",
   "jp.co.flect" % "flectCommon" % "1.2.2",
-  "net.debasishg" %% "redisclient" % "2.13"
+  "roomframework" %% "roomframework" % "0.9.2"
 )
 
 sources in (Compile, doc) := Seq.empty
