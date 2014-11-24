@@ -1,13 +1,37 @@
-@(desc: String, messages: Seq[models.MessageWrapper])
+@(desc: String, messages: Seq[models.MessageWrapper], external: Option[String])
 var http = require("http"),
 	https = require("https"),
 	assert = require("chai").assert,
+	@external.map(v=>external = "@v",).getOrElse(external = null,)
 	querystring = require("querystring");
 var IGNORE_KEYS = [],
 	IGNORE_VALUE = "__IGNORE__";
 
 function interceptor(prevResponse, requestParams, requestBody) {
 	//Add customization.
+}
+function Interceptor() {
+	function buildTestData(data) {
+		if (external && external.buildData) {
+			return external.buildData(data);
+		}
+		return data;
+	}
+	function hookRequest(prevResponse, request) {
+		if (external && external.hookRequest) {
+			external.hookRequest(prevResponse, request);
+		}
+	}
+	function validate(request, response) {
+		if (external && external.validate) {
+			return external.validate(request, response);
+		}
+		return false;
+	}
+
+	this.buildTestData = buildTestData;
+	this.hookRequest = hookRequest;
+	this.validate = validate;
 }
 function buildBody(contentType, params) {
 	if (!params) {
@@ -146,46 +170,53 @@ function Cookies() {
 describe("@desc", function() {
 	this.timeout(10000);
 	var cookies = new Cookies(),
-		prevResponse = null;
+		prevResponse = null,
+		interceptor = new Interceptor();
 @messages.map { msg =>
 	//@msg.uri
 	it("@msg.uri", function(done) {
-		function validateResponse(res, body) {
-@if(msg.responseContentType == "application/json") {
-			body = JSON.parse(body);
-			compareJson(body, @msg.responseBody(3));
-}
-			return body;
+		function validateResponse(response) {
+			if (interceptor.validate(request, response)) {
+				return;
+			}
+			assert.equal(response.statusCode, @msg.statusCode);
+			if (response.headers["content-type"] === "application/json" && testData) {
+				compareJson(response.body, testData);
+			}
 		}
 		var con = @msg.protocol,
-			requestData = @msg.requestBody(3),
-			params = {
+			request = {
 				"hostname": "@msg.host",
 				"method": "@msg.method",
 				"path": "@msg.uri",
-				"headers": @msg.requestHeaders(4)
-			};
+				"headers": @msg.requestHeaders(4),
+				"body": @msg.requestBody(4)
+			},
+			testData = interceptor.buildTestData(@msg.responseBody(3));
 
 		//Calc cookie
-		cookies.addCookie(params.headers["Cookie"]);
-		var cookie = cookies.getCookie(params.path, con === https);
+		cookies.addCookie(request.headers["Cookie"]);
+		var cookie = cookies.getCookie(request.path, con === https);
 		if (cookie) {
-			params.headers["Cookie"] = cookie;
+			request.headers["Cookie"] = cookie;
 		}
-		interceptor(prevResponse, params, requestData);
-		requestData = buildBody("@msg.requestContentType", requestData);
+		interceptor.hookRequest(prevResponse, request);
+		var requestData = buildBody("@msg.requestContentType", requestData);
 		if (requestData) {
-			params.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
+			request.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
 		}
 		var req = con.request(params, function(res) {
-				assert.equal(res.statusCode, @msg.statusCode);
 				var body = "";
 				res.setEncoding("utf-8");
 				res.on("data", function(data) { body += data;});
 				res.on("end", function() { 
 					cookies.addSetCookie(res.headers["set-cookie"]);
-					res.body = validateResponse(res, body);
+					if (res.headers["content-type"] === "application/json") {
+						body = JSON.parse(body);
+					}
+					res.body = body;
 					prevResponse = res;
+					validateResponse(res);
 					done();
 				});
 			});

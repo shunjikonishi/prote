@@ -157,6 +157,10 @@
           <input type="text" class="form-control" id="generate-option-description" ng-model="generateOption.description">
         </div>
         <div class="form-group">
+          <label for="generate-option-external">External Script</label>
+          <input type="text" class="form-control" id="generate-option-external" ng-model="generateOption.external">
+        </div>
+        <div class="form-group">
           <label for="generate-option-kind">Kind</label>
           <select class="form-control" id="generate-option-kind" ng-model="generateOption.kind">
             @generators.map{ v =>

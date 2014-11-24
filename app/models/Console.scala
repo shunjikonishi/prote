@@ -44,11 +44,12 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")
       val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
       val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
+      val external = (command.data \ "external").asOpt[String]
       val ids = (command.data \ "ids") match {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
       }
-      val id = pm.testGenerator(kind).generate(name, desc, ids)
+      val id = pm.testGenerator(kind).generate(name, desc, ids, external)
       command.text(id)
     }
     addHandler("regenerateTest") { command =>
@@ -56,6 +57,7 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")
       val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
       val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
+      val external = (command.data \ "external").asOpt[String]
 
       pm.regenerator(id, kind).map { gen =>
         val ids = new File(pm.testLogs, id)
@@ -64,7 +66,7 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
           .map(_.getName.takeWhile(_ != '.').toInt)
           .sorted
           .map(_.toString)
-        gen.generate(id, name, desc, ids)
+        gen.generate(id, name, desc, ids, external)
         command.text(id)
       }.getOrElse {
         command.json(JsObject(Seq(

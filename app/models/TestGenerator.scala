@@ -11,12 +11,12 @@ import testgen.SourceGenerator
 
 case class TestGenerator(dir: File, sm: StorageManager, srcGen: SourceGenerator) {
 
-  def generate(name: String, desc: String, ids: Seq[String]): String = {
+  def generate(name: String, desc: String, ids: Seq[String], external: Option[String] = None): String = {
     val id = UUID.randomUUID.toString
     generate(id, name, desc, ids)
   }
 
-  def generate(id: String, name: String, desc: String, ids: Seq[String]): String = {
+  def generate(id: String, name: String, desc: String, ids: Seq[String], external: Option[String] = None): String = {
     val testDir = new File(dir, id)
     testDir.mkdirs
     FileUtils.writeFile(new File(testDir, "id.txt"), id, "utf-8")
@@ -29,7 +29,7 @@ case class TestGenerator(dir: File, sm: StorageManager, srcGen: SourceGenerator)
         msg.response.copyTo(testDir, filename)
       }
     }
-    srcGen.generateTest(testDir, name, desc, requests)
+    srcGen.generateTest(testDir, name, desc, requests, external)
     val zipFile = zip(testDir)
     zipFile.renameTo(new File(testDir, name + ".zip"))
     id

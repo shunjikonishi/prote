@@ -208,6 +208,7 @@ window.$scope = $scope;
 		generateOption.title = "Generate test";
 		generateOption.regenerate = false;
 		generateOption.ids = ids;
+		generateOption.external = "";
 		$modal.open({
 			templateUrl: "generate-option",
 			scope: $scope,
@@ -268,6 +269,7 @@ window.$scope = $scope;
 		generateOption = {
 			filename: "test",
 			description: "Auto generate test",
+			external: "",
 			kind: "mocha"
 		},
 		filters = {
