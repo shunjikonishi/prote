@@ -26,6 +26,7 @@ import models.ProxyManager
 import models.WebSocketProxy
 import models.CacheManager
 import models.HostInfo
+import models.HttpHeader
 import models.ResponseMessage
 import exceptions.SSLNotSupportedException
 
@@ -35,6 +36,8 @@ object Application extends Controller {
   val client = pm.httpClient
 
   def proxy = Action.async(parse.raw) { implicit request =>
+    val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
+
     def escape(str: String) = {
       str.foldLeft(new StringBuilder()) { (buf, c) =>
         c match {
@@ -71,10 +74,10 @@ object Application extends Controller {
           }
         }
     }
-    def toResult(response: ResponseMessage, headersOp: Option[Map[String, String]] = None): Result = {
-      val headers = headersOp.getOrElse(response.headersToMap)
+    def toResult(response: ResponseMessage): Result = {
+      val headers = response.headersToMap
       val body = response.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
-      response.isChunked match {
+      val result = response.isChunked match {
         case true =>
           Status(response.statusLine.code)
             .chunked(body)
@@ -83,8 +86,8 @@ object Application extends Controller {
           val header = ResponseHeader(response.statusLine.code, headers)
           Result(header, body)
       }
+      result.withCookies(Cookie(AppConfig.cookieName, sessionId))
     }
-    val sessionId: String = request.cookies.get(AppConfig.cookieName).map(_.value).getOrElse(UUID.randomUUID.toString)
     val cache = CacheManager(sessionId)
     val hosts = cache.getHosts.getOrElse(AppConfig.targetHost)
     hosts.headOption.map { targetHost =>
@@ -94,72 +97,69 @@ object Application extends Controller {
       val interceptor = pm.interceptor(request.path)
 
       val ret = Promise[Result]()
-      val url = targetHost.protocol + "://" + targetHost.name + escape(request.uri)
-      val proxyReq = requestMessage.headers.foldLeft(request.method match {
-        case "GET" =>client.prepareGet(url)
-        case "POST" => client.preparePost(url)
-        case "DELETE" => client.prepareDelete(url)
-        case "PUT" => client.preparePut(url)
-        case "OPTIONS" => client.prepareOptions(url)
-        case "HEAD" => client.prepareHead(url)
-      }) { (req, h) =>
-        req.addHeader(h.name, h.value)
-      }
-      requestMessage.body.foreach { file =>
-        proxyReq.setBody(new EntityWriter() {
-          override def writeEntity(os: OutputStream): Unit = {
-            val is = new FileInputStream(file)
-            try {
-              val buf = new Array[Byte](8192)
-              var n = is.read(buf)
-              while (n != -1) {
-                os.write(buf, 0, n)
-                n = is.read(buf)
+      interceptor.hookRequest(requestMessage) match {
+        case Left(requestMessage) =>
+          val url = targetHost.protocol + "://" + targetHost.name + escape(request.uri)
+          val proxyReq = requestMessage.headers.foldLeft(request.method match {
+            case "GET" =>client.prepareGet(url)
+            case "POST" => client.preparePost(url)
+            case "DELETE" => client.prepareDelete(url)
+            case "PUT" => client.preparePut(url)
+            case "OPTIONS" => client.prepareOptions(url)
+            case "HEAD" => client.prepareHead(url)
+          }) { (req, h) =>
+            req.addHeader(h.name, h.value)
+          }
+          requestMessage.body.foreach { file =>
+            proxyReq.setBody(new EntityWriter() {
+              override def writeEntity(os: OutputStream): Unit = {
+                val is = new FileInputStream(file)
+                try {
+                  val buf = new Array[Byte](8192)
+                  Iterator.continually(is.read(buf)).takeWhile(_ != -1).foreach (os.write(buf, 0, _))
+                } finally {
+                  is.close
+                }
               }
-            } finally {
-              is.close
-            }
+            }, file.length)
           }
-        }, file.length)
-      }
 
-      val start = System.currentTimeMillis
-      proxyReq.execute(new AsyncCompletionHandler[Response](){
-        override def onCompleted(response: Response): Response = {
-          val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
-          val time = System.currentTimeMillis - start
-          val redirectHost = getRedirectHost(response, hosts)
-          val headers = responseMessage.headersToMap.map { case (name, value) =>
-            val newValue = if (name.equalsIgnoreCase("Location")) {
-              redirectHost.map { host =>
-                host.protocol + "://" + 
-                  getHostName(host.ssl) +
-                  value.substring(value.indexOf(host.name) + host.name.length)
-              }.getOrElse(value)
-            } else {
-              value
+          val start = System.currentTimeMillis
+          proxyReq.execute(new AsyncCompletionHandler[Response](){
+            override def onCompleted(response: Response): Response = {
+              val responseMessage = sm.createResponseMessage(targetHost, request, response, requestId)
+              val time = System.currentTimeMillis - start
+              val redirectHost = getRedirectHost(response, hosts)
+              val rewriteMessage = interceptor.hookResponse(
+                requestMessage, 
+                redirectHost.map { host =>
+                  responseMessage.copy(headers = responseMessage.headers.map { h =>
+                    if (h.is("Location")) {
+                      val newValue = host.protocol + "://" + 
+                        getHostName(host.ssl) +
+                        h.value.substring(h.value.indexOf(host.name) + host.name.length)
+                      HttpHeader(h.name, newValue)
+                    } else {
+                      h
+                    }
+                  })
+                }.getOrElse(responseMessage)
+              )
+              ret.success(toResult(rewriteMessage))
+              pm.console(sessionId).process(requestId, requestMessage, responseMessage, time)
+              val nextHost = redirectHost.getOrElse(hosts.head)
+              cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
+              response
             }
-            (name, newValue)
-          }
-          val body = responseMessage.body.map(Enumerator.fromFile(_)).getOrElse(Enumerator.empty)
-          val result = (if (responseMessage.isChunked) {
-            Status(response.getStatusCode)
-              .chunked(body)
-              .withHeaders(headers.toSeq:_*)
-          } else {
-            val header = ResponseHeader(response.getStatusCode, headers)
-            Result(header, body)
-          }).withCookies(Cookie(AppConfig.cookieName, sessionId))
-          ret.success(result)
-          pm.console(sessionId).process(requestId, requestMessage, responseMessage, time)
-          val nextHost = redirectHost.getOrElse(hosts.head)
-          cache.setHosts(nextHost :: hosts.filter(_.name != nextHost.name))
-          response
-        }
-        override def onThrowable(t: Throwable) = {
-          ret.failure(t)
-        }
-      });
+            override def onThrowable(t: Throwable) = {
+              ret.failure(t)
+            }
+          });
+        case Right(responseMessage) =>
+          responseMessage.copyTo(sm.dir, requestId)
+          ret.success(toResult(responseMessage))
+          pm.console(sessionId).process(requestId, requestMessage, responseMessage, 0)
+      }
       ret.future
     }.getOrElse {
       Future.successful(Ok("TARGET_HOST is not defined."))

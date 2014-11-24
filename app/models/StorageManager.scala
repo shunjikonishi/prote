@@ -59,7 +59,7 @@ class StorageManager(val dir: File, cookieName: String = AppConfig.cookieName) {
 
     val statusLine = (json \ "statusLine").as[String]
     val (host, headers) = parseHeaders(json)
-    ResponseMessage(host, statusLine, headers, bodyFile)
+    ResponseMessage(host, statusLine, headers, Some(bodyFile).filter(_.exists))
   }
 
   def createRequestMessage(host: HostInfo, request: Request[RawBuffer], id: String, deleteOnExit: Boolean = true): RequestMessage = {

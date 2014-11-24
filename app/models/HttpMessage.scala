@@ -6,7 +6,11 @@ import java.io.File
 import java.net.URLDecoder
 import jp.co.flect.io.FileUtils
 
-abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers: Seq[HttpHeader], val body: Option[File]) {
+trait HttpMessage {
+  val host: HostInfo
+  def initialLine: String
+  val headers: Seq[HttpHeader]
+  val body: Option[File]
   def isRequest: Boolean
   def isResponse = !isRequest
 
@@ -30,15 +34,27 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
     }
   }
 
-  def getHeader(name: String): Option[String] = headers.find(h => name.equalsIgnoreCase(h.name)).map(_.value)
+  def getBodyAsText: String = {
+    body.map(f => FileUtils.readFileAsString(f, "utf-8")).getOrElse(throw new IllegalStateException())
+  }
 
-  def contentType = getHeader("Content-Type").map(_.takeWhile(_ != ';')).getOrElse("application/octet-stream")
+  def getBoxyAsJson: JsValue = {
+    val text = getBodyAsText
+    Json.parse(text)
+  }
+
+  def getBodyAsUrlEncoded: Map[String, Seq[String]] = {
+    import play.core.parsers.FormUrlEncodedParser
+    val text = getBodyAsText
+    FormUrlEncodedParser.parse(text, charset)
+  }
+
+  def getHeader(name: String): Option[HttpHeader] = headers.find(h => name.equalsIgnoreCase(h.name))
+
+  def contentType = getHeader("Content-Type").map(_.withoutAttribute).getOrElse("application/octet-stream")
 
   def charset = {
-    getHeader("Content-Type")
-      .flatMap(_.split(";").find(_.toLowerCase.startsWith("charset=")))
-      .map(_.split("=")(1))
-      .getOrElse("utf-8")
+    getHeader("Content-Type").flatMap(_.attribute("charset")).getOrElse("utf-8")
   }
 
   def headersToMap: Map[String, String] = {
@@ -140,10 +156,11 @@ abstract class HttpMessage(val host: HostInfo, initialLine: String, val headers:
   }
 }
 
-case class RequestMessage(override val host: HostInfo, requestLine: RequestLine, override val headers: Seq[HttpHeader], override val body: Option[File])
-  extends HttpMessage(host, requestLine.toString, headers, body) 
+case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq[HttpHeader], body: Option[File])
+  extends HttpMessage
 {
   val isRequest = true
+  def initialLine = requestLine.toString
 
   def responseKindFromPath = {
     requestLine.path.toLowerCase match {
@@ -179,18 +196,21 @@ object RequestMessage {
   }
 }
 
-case class ResponseMessage(override val host: HostInfo, statusLine: StatusLine, override val headers: Seq[HttpHeader], override val body: Option[File])
-  extends HttpMessage(host, statusLine.toString, headers, body) 
+case class ResponseMessage(host: HostInfo, statusLine: StatusLine, headers: Seq[HttpHeader], body: Option[File])
+  extends HttpMessage
 {
   val isRequest = false
+  def initialLine = statusLine.toString
 }
 
 object ResponseMessage {
-  def apply(host: HostInfo, statusLine: String, headers: Seq[HttpHeader], body: File): ResponseMessage = {
-    ResponseMessage(host, StatusLine(statusLine), headers, body.exists match {
-      case true => Some(body)
-      case false => None
-    })
+  def apply(request: RequestMessage, statusCode: Int, headers: Seq[HttpHeader], body: Option[File]): ResponseMessage = {
+    val statusLine = StatusLine(statusCode, request.requestLine.version)
+    ResponseMessage(request.host, statusLine, headers, body)
+  }
+
+  def apply(host: HostInfo, statusLine: String, headers: Seq[HttpHeader], body: Option[File]): ResponseMessage = {
+    ResponseMessage(host, StatusLine(statusLine), headers, body)
   }
 }
 
@@ -210,7 +230,7 @@ object RequestLine {
   }
 }
 
-case class StatusLine(code: Int, version: String, phrase: Option[String]) {
+case class StatusLine(code: Int, version: String, phrase: Option[String] = None) {
 
   override def toString = {
     val addition = phrase.map(" " + _).getOrElse("")
