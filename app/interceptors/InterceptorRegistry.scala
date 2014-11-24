@@ -7,6 +7,7 @@ object InterceptorRegistry {
   val defaultInterceptor = new Interceptor() {}
 
   private val list: Seq[(Pattern, Interceptor)] = Seq(
+    //"/login" -> new SampleInterceptor(),
     ".*" -> defaultInterceptor
   ).map{case (s, v) => (s.r.pattern, v)}
 

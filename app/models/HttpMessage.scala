@@ -4,6 +4,7 @@ import play.api.mvc.Cookies
 import play.api.libs.json._
 import java.io.File
 import java.net.URLDecoder
+import java.net.URLEncoder
 import jp.co.flect.io.FileUtils
 
 trait HttpMessage {
@@ -13,6 +14,8 @@ trait HttpMessage {
   val body: Option[File]
   def isRequest: Boolean
   def isResponse = !isRequest
+
+  def messageType = if (isRequest) "request" else "response"
 
   def isTextBody = {
     val gzip = headers.find { h =>
@@ -38,7 +41,7 @@ trait HttpMessage {
     body.map(f => FileUtils.readFileAsString(f, "utf-8")).getOrElse(throw new IllegalStateException())
   }
 
-  def getBoxyAsJson: JsValue = {
+  def getBodyAsJson: JsValue = {
     val text = getBodyAsText
     Json.parse(text)
   }
@@ -49,7 +52,40 @@ trait HttpMessage {
     FormUrlEncodedParser.parse(text, charset)
   }
 
-  def getHeader(name: String): Option[HttpHeader] = headers.find(h => name.equalsIgnoreCase(h.name))
+  protected def doReplaceBody(text: String): Seq[HttpHeader] = {
+    body.map { f =>
+      FileUtils.writeFile(f, text.getBytes(charset))
+      val newLength = f.length.toString
+      getHeader("Content-Length").filter(_.value != newLength).map { h =>
+        val newHeaders = headers.map(h => if (h.is("Content-Length")) HttpHeader(h.name, newLength) else h)
+        val json = toJson.deepMerge(JsObject(Seq(
+          "headers" -> JsArray(newHeaders.map(h => JsObject(Seq(
+            "name" -> JsString(h.name),
+            "value" -> JsString(h.value)
+          ))))
+        )))
+        val str = Json.prettyPrint(json)
+        val headerFile = new File(f.getParentFile, f.getName.takeWhile(_ != '.') + "." + messageType + ".headers")
+        FileUtils.writeFile(headerFile, str, "utf-8")
+        newHeaders
+      }.getOrElse(headers)
+    }.getOrElse(throw new IllegalArgumentException())
+  }
+
+  protected def doReplaceBody(json: JsValue): Seq[HttpHeader] = {
+    doReplaceBody(Json.stringify(json))
+  }
+
+  protected def doReplaceBody(parameters: Map[String, Seq[String]]): Seq[HttpHeader] = {
+    val cs = charset
+    val text = parameters.map { case (key, seq) =>
+      val encodedKey = URLEncoder.encode(key, cs)
+      seq.map(encodedKey + "=" + URLEncoder.encode(_, cs)).mkString("&")
+    }.mkString("&")
+    doReplaceBody(text)
+  }
+
+  def getHeader(name: String): Option[HttpHeader] = headers.find(_.is(name))
 
   def contentType = getHeader("Content-Type").map(_.withoutAttribute).getOrElse("application/octet-stream")
 
@@ -185,6 +221,10 @@ case class RequestMessage(host: HostInfo, requestLine: RequestLine, headers: Seq
     }
   }
 
+  def replaceBody(text: String): RequestMessage = copy(headers=doReplaceBody(text))
+  def replaceBody(json: JsValue): RequestMessage = copy(headers=doReplaceBody(json))
+  def replaceBody(parameters: Map[String, Seq[String]]): RequestMessage = copy(headers=doReplaceBody(parameters))
+
 }
 
 object RequestMessage {
@@ -201,6 +241,10 @@ case class ResponseMessage(host: HostInfo, statusLine: StatusLine, headers: Seq[
 {
   val isRequest = false
   def initialLine = statusLine.toString
+
+  def replaceBody(text: String): ResponseMessage = copy(headers=doReplaceBody(text))
+  def replaceBody(json: JsValue): ResponseMessage = copy(headers=doReplaceBody(json))
+  def replaceBody(parameters: Map[String, Seq[String]]): ResponseMessage = copy(headers=doReplaceBody(parameters))
 }
 
 object ResponseMessage {
