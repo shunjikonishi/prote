@@ -44,7 +44,7 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")
       val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
       val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
-      val external = (command.data \ "external").asOpt[String]
+      val external = (command.data \ "external").asOpt[String].filter(_.length > 0)
       val ids = (command.data \ "ids") match {
         case JsArray(seq) => seq.map(_.as[String])
         case _ => throw new IllegalArgumentException()
@@ -57,7 +57,7 @@ class Console(pm: ProxyManager, sessionId: String) extends CommandInvoker {
       val name = (command.data \ "filename").asOpt[String].getOrElse("test")
       val desc = (command.data \ "description").asOpt[String].getOrElse("Auto generated test")
       val kind = (command.data \ "kind").asOpt[String].getOrElse("mocha")
-      val external = (command.data \ "external").asOpt[String]
+      val external = (command.data \ "external").asOpt[String].filter(_.length > 0)
 
       pm.regenerator(id, kind).map { gen =>
         val ids = new File(pm.testLogs, id)

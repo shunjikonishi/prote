@@ -16,8 +16,9 @@ function Interceptor() {
 	}
 	function hookRequest(prevResponse, request) {
 		if (external && external.hookRequest) {
-			external.hookRequest(prevResponse, request);
+			return external.hookRequest(prevResponse, request);
 		}
+		return request;
 	}
 	function validate(request, response) {
 		if (external && external.validate) {
@@ -174,9 +175,9 @@ describe("@desc", function() {
 	var cookies = new Cookies(),
 		prevResponse = null,
 		interceptor = new Interceptor();
-@messages.map { msg =>
+@messages.zipWithIndex.map { case(msg, idx) =>
 	//@msg.uri
-	it("@msg.uri", function(done) {
+	it("@{idx + 1}. @msg.uri", function(done) {
 		function validateResponse(response) {
 			if (interceptor.validate(request, response)) {
 				return;
@@ -202,7 +203,7 @@ describe("@desc", function() {
 		if (cookie) {
 			request.headers["Cookie"] = cookie;
 		}
-		interceptor.hookRequest(prevResponse, request);
+		request = interceptor.hookRequest(prevResponse, request);
 		var requestData = buildBody("@msg.requestContentType", request.body);
 		if (requestData) {
 			request.headers["Content-Length"] = new Buffer(requestData, "utf-8").length;
